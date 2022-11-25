@@ -1,0 +1,80 @@
+# -------------------------------------------------------------------------------------------------
+# This workflow is supposed to be re-used by the deployment workflow in the preview repo.
+# Everything is handled by the dependents/preview.yml workflow, nothing has to be configured here.
+# -------------------------------------------------------------------------------------------------
+
+name: Post comment on the original PR
+on:
+  workflow_call:
+    inputs:
+      action:
+        description: 'The action that was performed, either "deploy" or "remove"'
+        required: true
+        type: string
+      date:
+        description: 'The date of the commit that was pushed'
+        required: true
+        type: string
+      preview_branch:
+        description: 'The name of the branch that hosts the previews'
+        required: true
+        type: string
+      preview_url:
+        description: 'The full URL of the preview'
+        required: true
+        type: string
+      source_repo:
+        description: 'The repository to comment to, in the Owner/Name format'
+        required: true
+        type: string
+
+      preview_repo:
+        description: 'The repository that holds previews, in the Owner/Name format'
+        required: false
+        default: ${{ github.repository }} # the github context is associated with the caller repo
+        type: string
+    secrets:
+      repo_token:
+        description: 'The token to access the source repo'
+        required: true
+
+jobs:
+  comment:
+    name: Comment on the PR
+    runs-on: ubuntu-latest
+
+    # Thanks, https://github.com/rossjrw/pr-preview-action/blob/eac2838daf487e8f054a4bc10dc957431cd6270b/action.yml
+    # marocchino/sticky-pull-request-comment should already have everything it needs from the caller repo, since 
+    # the github context is associated with the caller. 
+    steps:
+      - name: Comment on deployment
+        if: ${{ inputs.action == 'deploy' }}
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          repo: ${{ inputs.source_repo }}
+          GITHUB_TOKEN: ${{ secrets.repo_token }}
+          message: "\
+            [Pages Preview]\
+            (${{ github.server_url }}/EndBug/pages-preview)
+            :---:
+            :rocket: Deployed preview to
+            ${{ inputs.preview_url }}
+            on branch [`${{ inputs.preview_branch }}`](\
+            ${{ github.server_url }}/${{ inputs.preview_repo }}\
+            /tree/${{ inputs.preview_branch }})
+            at ${{ inputs.date }}
+            "
+          
+      - name: Comment on removal
+        if: ${{ inputs.action == 'remove' }}
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          repo: ${{ inputs.source_repo }}
+          GITHUB_TOKEN: ${{ secrets.repo_token }}
+          message: "\
+            [Pages Preview]\
+            (${{ github.server_url }}/EndBug/pages-preview)
+            :---:
+            Preview removed because the pull request was closed.
+            ${{ inputs.date }}
+            "

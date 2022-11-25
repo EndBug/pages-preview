@@ -103,6 +103,12 @@ jobs:
     name: Trigger deployment on the preview repo
     needs: push
     if: ${{ needs.push.outputs.action != 'none' }}
+
+    permissions:
+      # This limits the premissions of the token that will get passed in the repository dispatch, so
+      # that it shall only be able to access pull requests.
+      pull-requests: write
+
     runs-on: ubuntu-latest
     concurrency: deploy/${{ github.repository }}/${{ startsWith(github.event_name, 'pull_request') && 'pr' || 'branch' }}
     steps:
@@ -121,47 +127,16 @@ jobs:
           repo: ${{ steps.parse_repo.outputs.repo_name }}
           token: ${{ secrets.preview_token }}
           event_type: deploy-preview
-          client_payload: '{"ref": "${{ steps.parse_repo.outputs.current_ref }}"}'
-          wait_time: 5
-          max_time: 180
-
-  comment:
-
-    name: Comment on the PR
-    needs: [push, deploy]
-    if: ${{ startsWith(github.event_name, 'pull_request') && needs.push.outputs.action != 'none' }}
-    runs-on: ubuntu-latest
-
-    # Thanks, https://github.com/rossjrw/pr-preview-action/blob/eac2838daf487e8f054a4bc10dc957431cd6270b/action.yml
-    # marocchino/sticky-pull-request-comment should already have everything it needs from the caller repo, since 
-    # the github context is associated with the caller. 
-    steps:
-      - name: Comment on deployment
-        if: ${{ needs.push.outputs.action == 'deploy' }}
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          message: "\
-            [Pages Preview]\
-            (${{ github.server_url }}/EndBug/pages-preview)
-            :---:
-            :rocket: Deployed preview to
-            https://${{ inputs.preview_base_url }}/${{ needs.push.outputs.path }}/
-            on branch [`${{ inputs.preview_branch }}`](\
-            ${{ github.server_url }}/${{ inputs.preview_repo }}\
-            /tree/${{ inputs.preview_branch }})
-            at ${{ needs.push.outputs.date }}
-            "
-          
-
-      - name: Comment on removal
-        if: ${{ needs.push.outputs.action == 'remove' }}
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          repo: ${{ github.repository }}
-          message: "\
-            [Pages Preview]\
-            (${{ github.server_url }}/EndBug/pages-preview)
-            :---:
-            Preview removed because the pull request was closed.
-            ${{ needs.push.outputs.date }}
-            "
+          client_payload: '{\
+              "action": "${{ needs.push.outputs.action }}",\
+              "date": "${{ needs.push.outputs.commit_date }}",\
+              "event_name": "${{ github.event_name }}",\
+              "path": "${{ needs.push.outputs.path }}",\
+              "preview_branch": "${{ inputs.preview_branch }}",\
+              "ref": "${{ steps.parse_repo.outputs.current_ref,\
+              "source_repo": "${{ github.repository }}",\
+              "source_repo_token": "${{ github.token }}",\
+              "version": "v1"\
+             }}"}'
+          wait_time: 45
+          max_time: 300
