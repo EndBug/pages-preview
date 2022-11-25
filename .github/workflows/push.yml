@@ -31,6 +31,10 @@ on:
         type: string
         default: gh-pages
         required: false
+      preview_base_url:
+        description: The GitHub Pages base URL of the preview repo
+        type: string
+        required: false
 
     secrets:
       preview_token:
@@ -40,8 +44,14 @@ on:
 # Note: when running a reusable workflow, the github context is associated with the caller repo.
 jobs:
   push:
+    name: Push changes to the preview repo
     runs-on: ubuntu-latest
-    concurrency: deploy/${{ github.repository }}/${{ startsWith(github.event_name, 'pull_request') && 'pr' || 'branch' }}
+    concurrency: push/${{ github.repository }}/${{ startsWith(github.event_name, 'pull_request') && 'pr' || 'branch' }}
+    outputs:
+      action: ${{ steps.parse.outputs.action || 'none' }}
+      commit_date: ${{ steps.current_ref.outputs.date }}
+      current_ref: ${{ steps.current_ref.outputs.sha }}
+      path: ${{ steps.parse.outputs.path }}
     steps:
       - name: Parse what the action to perform
         run: ./lib/parse_action.sh
@@ -54,7 +64,7 @@ jobs:
           REPO_NAME: ${{ github.repository }}
 
       - name: Set up the preview repo
-        if: ${{ steps.parse.action != 'none' }}
+        if: ${{ steps.parse.outputs.action != 'none' }}
         run: |
           cd ../..
           gh repo clone ${{ inputs.preview_repo }}
@@ -67,18 +77,91 @@ jobs:
           git checkout ${{ inputs.preview_branch }}
 
       - name: Copy the build directory to the destination and commit the changes
-        if: ${{ steps.parse.action == 'deploy' }}
+        if: ${{ steps.parse.outputs.action == 'deploy' }}
         run: |
-          git rm "${{ steps.parse.path }}" -r
-          cp "${{ github.workspace }}/${{ inputs.build_dir }}" "${{ steps.parse.path }}" -r
-          git add "${{ steps.parse.path }}"
-          git commit --message="ci: deploy preview for ${{ steps.parse.path }}"
+          git rm "${{ steps.parse.outputs.path }}" -r
+          cp "${{ github.workspace }}/${{ inputs.build_dir }}" "${{ steps.parse.outputs.path }}" -r
+          git add "${{ steps.parse.outputs.path }}"
+          git commit --message="ci: deploy preview for ${{ steps.parse.outputs.path }}"
           git push origin ${{ inputs.preview_branch }}
 
       - name: Remove the destination directory and commit the changes
-        if: ${{ steps.parse.action == 'remove' }}
+        if: ${{ steps.parse.outputs.action == 'remove' }}
         run: |
-          git rm "${{ steps.parse.path }}" -r
-          git commit --message="ci: remove preview for ${{ steps.parse.path }}"
+          git rm "${{ steps.parse.outputs.path }}" -r
+          git commit --message="ci: remove preview for ${{ steps.parse.outputs.path }}"
           git push origin ${{ inputs.preview_branch }}
-        
+
+      - name: Get current ref & commit date
+        if: ${{ steps.parse.outputs.action != 'none' }}
+        id: current_ref
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          echo "date=$(git show -s --format=%ci HEAD)" >> $GITHUB_OUTPUT
+
+  deploy:
+    name: Trigger deployment on the preview repo
+    needs: push
+    if: ${{ needs.push.outputs.action != 'none' }}
+    runs-on: ubuntu-latest
+    concurrency: deploy/${{ github.repository }}/${{ startsWith(github.event_name, 'pull_request') && 'pr' || 'branch' }}
+    steps:
+      - name: Parse repo owner and name
+        id: parse_repo
+        # outputs: repo_owner, repo_name, current_ref
+        run: |
+          echo "repo_owner=$(cut -d "/" -f 1 <<<"${{ inputs.preview_repo }}")" >> $GITHUB_OUTPUT
+          echo "repo_name=$(cut -d "/" -f 2 <<<"${{ inputs.preview_repo }}")" >> $GITHUB_OUTPUT
+          
+      - name: Trigger deployment in the preview repo
+        if: ${{ steps.parse.outputs.action != 'none' }}
+        uses: adityakar/workflow-dispatcher@v1.0
+        with:
+          owner: ${{ steps.parse_repo.outputs.repo_owner }}
+          repo: ${{ steps.parse_repo.outputs.repo_name }}
+          token: ${{ secrets.preview_token }}
+          event_type: deploy-preview
+          client_payload: '{"ref": "${{ steps.parse_repo.outputs.current_ref }}"}'
+          wait_time: 5
+          max_time: 180
+
+  comment:
+
+    name: Comment on the PR
+    needs: [push, deploy]
+    if: ${{ startsWith(github.event_name, 'pull_request') && needs.push.outputs.action != 'none' }}
+    runs-on: ubuntu-latest
+
+    # Thanks, https://github.com/rossjrw/pr-preview-action/blob/eac2838daf487e8f054a4bc10dc957431cd6270b/action.yml
+    # marocchino/sticky-pull-request-comment should already have everything it needs from the caller repo, since 
+    # the github context is associated with the caller. 
+    steps:
+      - name: Comment on deployment
+        if: ${{ needs.push.outputs.action == 'deploy' }}
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: "\
+            [Pages Preview]\
+            (${{ github.server_url }}/EndBug/pages-preview)
+            :---:
+            :rocket: Deployed preview to
+            https://${{ inputs.preview_base_url }}/${{ needs.push.outputs.path }}/
+            on branch [`${{ inputs.preview_branch }}`](\
+            ${{ github.server_url }}/${{ inputs.preview_repo }}\
+            /tree/${{ inputs.preview_branch }})
+            at ${{ needs.push.outputs.date }}
+            "
+          
+
+      - name: Comment on removal
+        if: ${{ needs.push.outputs.action == 'remove' }}
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          repo: ${{ github.repository }}
+          message: "\
+            [Pages Preview]\
+            (${{ github.server_url }}/EndBug/pages-preview)
+            :---:
+            Preview removed because the pull request was closed.
+            ${{ needs.push.outputs.date }}
+            "

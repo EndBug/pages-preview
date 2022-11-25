@@ -10,6 +10,9 @@ event_name=$EVENT_NAME
 event_payload=$EVENT_PAYLOAD
 repo_name=$REPO_NAME
 
+# Default value
+echo "action=none" >>$GITHUB_OUTPUT
+
 case $event_name in
 "pull_request" | "pull_request_target")
   echo "Event name: $event_name; OK"
