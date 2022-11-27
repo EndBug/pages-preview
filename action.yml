@@ -1,0 +1,120 @@
+name: Pages Preview
+author: Federico Grandi <fgrandi30@gmail.com>
+description: Deploy GitHub Pages previews for your branches and PRs
+
+branding:
+  color: gray-dark
+  icon: upload-cloud
+
+inputs:
+  # Required
+  build_dir: 
+    description: The directory in which the website has been built. Should be written as a/b/c
+    required: true
+  preview_repo:
+    description: The repository to push previews to, in the Owner/Name format
+    required: true
+  preview_token:
+    description: The token to access the preview repo
+    required: true
+  # Not required
+  commit_author_name:
+    description: The name of the author of the resulting commit
+    default: GitHub Actions
+    required: false
+  commit_author_email:
+    description: The email of the author of the resulting commit
+    default: 41898282+github-actions[bot]@users.noreply.github.com
+    required: false
+  preview_branch:
+    description: The name of the branch that hosts the previews
+    default: gh-pages
+    required: false
+  preview_base_url:
+    description: The GitHub Pages base URL of the preview repo
+    required: false
+
+runs:
+  using: composite
+  steps:
+  - name: Parse what the action has to perform
+    run: ${{ github.action_path }}/lib/parse_action.sh
+    shell: bash
+    id: parse_action
+    # outputs: action, path
+    env:
+      EVENT_NAME: ${{ github.event_name }}
+      EVENT_PAYLOAD: ${{ toJSON(github.event) }}
+      REPO_NAME: ${{ github.repository }}
+
+  - name: Set up the preview repo
+    if: ${{ steps.parse_action.outputs.action != 'none' }}
+    shell: bash
+    run: |
+      cd ${{ github.workspace }}/..
+      gh repo clone ${{ inputs.preview_repo }} preview_${{ github.sha }}
+      cd preview_${{ github.sha }} 
+      git config --global user.name ${{ inputs.commit_author_name }}
+      git config --global user.email ${{ inputs.commit_author_email }}
+      echo "GIT_COMMITTER_NAME=GitHub Actions" >> $GITHUB_ENV
+      echo "GIT_COMMITTER_EMAIL=41898282+github-actions[bot]@users.noreply.github.com" >> $GITHUB_ENV
+      git remote set-url origin https://git:${{ inputs.preview_token }}@github.com/${{ inputs.preview_repo }}.git
+      git checkout ${{ inputs.preview_branch }}
+    
+  - name: Copy the build directory to the destination and commit the changes
+    if: ${{ steps.parse_action.outputs.action == 'deploy' }}
+    shell: bash
+    run: |
+      git rm "${{ steps.parse_action.outputs.path }}" -r
+      cp "${{ github.workspace }}/${{ inputs.build_dir }}" "${{ steps.parse_action.outputs.path }}" -r
+      git add "${{ steps.parse_action.outputs.path }}"
+      git commit --message="ci: deploy preview for ${{ steps.parse_action.outputs.path }}"
+      git push origin ${{ inputs.preview_branch }}
+
+  - name: Remove the destination directory and commit the changes
+    if: ${{ steps.parse_action.outputs.action == 'remove' }}
+    shell: bash
+    run: |
+      git rm "${{ steps.parse_action.outputs.path }}" -r
+      git commit --message="ci: remove preview for ${{ steps.parse_action.outputs.path }}"
+      git push origin ${{ inputs.preview_branch }}
+
+  - name: Get current ref & commit date
+    if: ${{ steps.parse_action.outputs.action != 'none' }}
+    id: current_ref
+    shell: bash
+    # outputs: sha, date
+    run: |
+      echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+      echo "date=$(git show -s --format=%ci HEAD)" >> $GITHUB_OUTPUT
+
+  - name: Parse preview repo owner and name
+    if: ${{ steps.parse_action.outputs.action != 'none' }}
+    id: parse_repo
+    shell: bash
+    # outputs: owner, name
+    run: |
+      echo "owner=$(cut -d "/" -f 1 <<<"${{ inputs.preview_repo }}")" >> $GITHUB_OUTPUT
+      echo "name=$(cut -d "/" -f 2 <<<"${{ inputs.preview_repo }}")" >> $GITHUB_OUTPUT
+        
+  - name: Trigger deployment in the preview repo
+    if: ${{ steps.parse_action.outputs.action != 'none' }}
+    uses: adityakar/workflow-dispatcher@v1.0
+    with:
+      owner: ${{ steps.parse_repo.outputs.repo_owner }}
+      repo: ${{ steps.parse_repo.outputs.repo_name }}
+      token: ${{ inputs.preview_token }}
+      event_type: deploy-preview
+      client_payload: '{\
+          "action": "${{ steps.parse_action.outputs.action }}",\
+          "date": "${{ steps.current_ref.outputs.date }}",\
+          "event_name": "${{ github.event_name }}",\
+          "path": "${{ steps.parse_action.outputs.path }}",\
+          "preview_branch": "${{ inputs.preview_branch }}",\
+          "ref": "${{ steps.current_ref.outputs.sha }}",\
+          "source_repo": "${{ github.repository }}",\
+          "source_repo_token": "${{ github.token }}",\
+          "version": "${{ github.action_ref }}"\
+        }}"}'
+      wait_time: 45
+      max_time: 300
