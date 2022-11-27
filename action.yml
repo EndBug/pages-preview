@@ -65,7 +65,7 @@ runs:
     shell: bash
     run: |
       git rm "${{ steps.parse_action.outputs.path }}" -r --ignore-unmatch
-      mkdir -p "${{ steps.parse_action.outputs.path }}" && cp "${{ github.workspace }}/${{ inputs.build_dir }}/**" "$_" -r
+      mkdir -p "${{ steps.parse_action.outputs.path }}" && cp "${{ github.workspace }}/${{ inputs.build_dir }}/." "$_" -a
       git add "${{ steps.parse_action.outputs.path }}"
       git commit --message="ci: deploy preview for ${{ steps.parse_action.outputs.path }}"
       git push origin ${{ inputs.preview_branch }}
