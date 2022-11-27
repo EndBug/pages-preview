@@ -44,7 +44,7 @@ case $event_name in
   ref=$(jq .ref <<<$event_payload | sed -e 's/^"//' -e 's/"$//')
   echo "Ref pushed: $ref"
 
-  if [[ ref == refs/heads/* ]]; then
+  if [[ $ref == refs/heads/* ]]; then
     action="deploy"
     branch=${ref#refs/heads/}
     path="$repo_name/branch/$branch"
