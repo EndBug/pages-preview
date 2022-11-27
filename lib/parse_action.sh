@@ -17,7 +17,7 @@ case $event_name in
 "pull_request" | "pull_request_target")
   echo "Event name: $event_name; OK"
 
-  event_type = $(jq .action <<<$event_payload)
+  event_type=$(jq .action <<<$event_payload | sed -e 's/^"//' -e 's/"$//')
   echo "Event type: $event_type"
 
   case $event_type in
@@ -32,7 +32,7 @@ case $event_name in
     ;;
   esac
 
-  pr_number=$(jq .number <<<$event_payload)
+  pr_number=$(jq .number <<<$event_payload | sed -e 's/^"//' -e 's/"$//')
   echo "PR number: $pr_number"
 
   path="$repo_name/pr/$pr_number"
@@ -41,7 +41,7 @@ case $event_name in
 "push")
   echo "Event name: $event_name; OK"
 
-  ref=$(jq .ref <<<$event_payload)
+  ref=$(jq .ref <<<$event_payload | sed -e 's/^"//' -e 's/"$//')
   echo "Ref pushed: $ref"
 
   if [[ ref == refs/heads/* ]]; then
