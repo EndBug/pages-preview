@@ -27,6 +27,10 @@ on:
         description: 'The repository to comment to, in the Owner/Name format'
         required: true
         type: string
+      version:
+        description: 'The version of EndBug/pages-preview that triggered the workflow'
+        required: true
+        type: string
 
       preview_repo:
         description: 'The repository that holds previews, in the Owner/Name format'
@@ -39,9 +43,21 @@ on:
         required: true
 
 jobs:
+  # VERSION: update before changing the major version
+  version-check:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check version
+      run: |
+        if [ "${{ github.event.inputs.version }}" != "v1" ]; then
+          echo "This workflow is meant to be used with EndBug/pages-preview@v1, please update your action."
+          exit 1
+        fi
+
   comment:
     name: Comment on the PR
     runs-on: ubuntu-latest
+    needs: version-check
 
     # Thanks, https://github.com/rossjrw/pr-preview-action/blob/eac2838daf487e8f054a4bc10dc957431cd6270b/action.yml
     # marocchino/sticky-pull-request-comment should already have everything it needs from the caller repo, since 

@@ -107,6 +107,7 @@ runs:
       repo: ${{ steps.parse_repo.outputs.name }}
       token: ${{ inputs.preview_token }}
       event_type: deploy-preview
+      # VERSION: update before changing the major version
       client_payload: >-
         {
           "action": "${{ steps.parse_action.outputs.action }}",
@@ -117,7 +118,7 @@ runs:
           "ref": "${{ steps.current_ref.outputs.sha }}",
           "source_repo": "${{ github.repository }}",
           "source_repo_token": "${{ github.token }}",
-          "version": "${{ github.action_ref }}"
+          "version": "v1"
         }
       wait_time: 45
       max_time: 300
