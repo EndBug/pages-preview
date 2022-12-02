@@ -95,7 +95,7 @@ jobs:
     if: ${{ startsWith(inputs.event_name, 'pull_request') }}
 
     # VERSION: update before changing the major version
-    uses: EndBug/pages-preview@v1/.github/workflows/comment.yml
+    uses: EndBug/pages-preview/.github/workflows/comment.yml@v1
     with:
       action: ${{ inputs.action }}
       date: ${{ inputs.date }}
