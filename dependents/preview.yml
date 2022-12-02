@@ -6,8 +6,7 @@
 
 name: Deploy previews and comment on PR
 on:
-  repository_dispatch:
-    types: [deploy-preview]
+  workflow_dispatch:
     inputs:
       action:
         description: 'The action that was performed, either "deploy" or "remove"'

@@ -18,6 +18,10 @@ inputs:
     description: The token to access the preview repo
     required: true
   # Not required
+  preview_workflow_file_name:
+    description: The name of the workflow file that contains the comment workflow in the preview repo. If you use my template, the name is already 'preview.yml'
+    default: preview.yml
+    required: false
   commit_author_name:
     description: The name of the author of the resulting commit
     default: GitHub Actions
@@ -98,15 +102,16 @@ runs:
     run: |
       echo "owner=$(cut -d "/" -f 1 <<<"${{ inputs.preview_repo }}")" >> $GITHUB_OUTPUT
       echo "name=$(cut -d "/" -f 2 <<<"${{ inputs.preview_repo }}")" >> $GITHUB_OUTPUT
-        
+
   - name: Trigger deployment in the preview repo
+    uses: convictional/trigger-workflow-and-wait@v1.6.5
     if: ${{ steps.parse_action.outputs.action != 'none' }}
-    uses: michaelborn/workflow-dispatcher@e841093538822b96bc57901091fa901dc8d25af1
     with:
       owner: ${{ steps.parse_repo.outputs.owner }}
       repo: ${{ steps.parse_repo.outputs.name }}
-      token: ${{ inputs.preview_token }}
-      event_type: deploy-preview
+      github_token: ${{ inputs.preview_token }}
+      workflow_file_name: ${{ inputs.preview_workflow_file_name }}
+      wait_interval: 10
       # VERSION: update before changing the major version
       client_payload: >-
         {
@@ -120,5 +125,4 @@ runs:
           "source_repo_token": "${{ github.token }}",
           "version": "v1"
         }
-      wait_time: 45
-      max_time: 300
+      propagate_failure: true
