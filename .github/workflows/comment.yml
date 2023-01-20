@@ -15,6 +15,10 @@ on:
         description: 'The date of the commit that was pushed'
         required: true
         type: string
+      pr_number:
+        description: 'The number of the pull request that triggered the workflow'
+        required: true
+        type: number
       preview_branch:
         description: 'The name of the branch that hosts the previews'
         required: true
@@ -80,6 +84,7 @@ jobs:
             /tree/${{ inputs.preview_branch }})
             at ${{ inputs.date }}
             "
+          number: ${{ inputs.pr_number }}
           
       - name: Comment on removal
         if: ${{ inputs.action == 'remove' }}
@@ -94,3 +99,4 @@ jobs:
             Preview removed because the pull request was closed.
             ${{ inputs.date }}
             "
+          number: ${{ inputs.pr_number }}

@@ -24,6 +24,10 @@ on:
         description: 'The path of the preview that has been edited'
         required: true
         type: string
+      pr_number:
+        description: 'The number of the pull request that triggered the workflow, use 0 if not a PR.'
+        required: true
+        type: number
       preview_branch:
         description: 'The name of the branch that hosts the previews'
         required: true
@@ -92,13 +96,14 @@ jobs:
   comment:
     name: Comment on the original PR
     needs: [version-check, deploy]
-    if: ${{ startsWith(inputs.event_name, 'pull_request') }}
+    if: ${{ startsWith(inputs.event_name, 'pull_request') && inputs.pr_number != 0 }}
 
     # VERSION: update before changing the major version
     uses: EndBug/pages-preview/.github/workflows/comment.yml@v1
     with:
       action: ${{ inputs.action }}
       date: ${{ inputs.date }}
+      pr_number: ${{ inputs.pr_number }}
       preview_branch: ${{ inputs.preview_branch }}
       preview_url: ${{ needs.deploy.outputs.page_url }}/${{ inputs.path }}
       source_repo: ${{ inputs.source_repo }}

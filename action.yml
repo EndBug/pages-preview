@@ -119,6 +119,7 @@ runs:
           "date": "${{ steps.current_ref.outputs.date }}",
           "event_name": "${{ github.event_name }}",
           "path": "${{ steps.parse_action.outputs.path }}",
+          "pr_number": ${{ github.event.number || 0 }},
           "preview_branch": "${{ inputs.preview_branch }}",
           "ref": "${{ steps.current_ref.outputs.sha }}",
           "source_repo": "${{ github.repository }}",
