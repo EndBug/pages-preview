@@ -27,7 +27,7 @@ on:
       pr_number:
         description: 'The number of the pull request that triggered the workflow, use 0 if not a PR.'
         required: true
-        type: number
+        type: string
       preview_branch:
         description: 'The name of the branch that hosts the previews'
         required: true
