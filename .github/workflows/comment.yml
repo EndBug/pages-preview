@@ -28,7 +28,7 @@ on:
         required: true
         type: string
       source_repo:
-        description: 'The repository to comment to, in the Owner/Name format'
+        description: 'The name of the repository to comment to, in the Owner/Name format'
         required: true
         type: string
       version:
@@ -67,11 +67,21 @@ jobs:
     # marocchino/sticky-pull-request-comment should already have everything it needs from the caller repo, since 
     # the github context is associated with the caller. 
     steps:
+      - name: Parse source repo name
+        id: parse_repo
+        run: |
+          echo "owner=$(cut -d "/" -f 1 <<<"${{ inputs.source_repo }}")" >> $GITHUB_OUTPUT
+          echo "name=$(cut -d "/" -f 2 <<<"${{ inputs.source_repo }}")" >> $GITHUB_OUTPUT
+
+      # marocchino/sticky-pull-request-comment doesn't have a way to change the owner yet,
+      # it just assumes it's the same as the workflow this will be running from.
+
+
       - name: Comment on deployment
         if: ${{ inputs.action == 'deploy' }}
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-          repo: ${{ inputs.source_repo }}
+          repo: ${{ steps.source_repo.outputs.name }}
           GITHUB_TOKEN: ${{ secrets.repo_token }}
           message: "\
             [Pages Preview]\
@@ -90,7 +100,7 @@ jobs:
         if: ${{ inputs.action == 'remove' }}
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-          repo: ${{ inputs.source_repo }}
+          repo: ${{ steps.source_repo.outputs.name }}
           GITHUB_TOKEN: ${{ secrets.repo_token }}
           message: "\
             [Pages Preview]\
