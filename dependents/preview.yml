@@ -102,5 +102,6 @@ jobs:
       preview_branch: ${{ inputs.preview_branch }}
       preview_url: ${{ needs.deploy.outputs.page_url }}/${{ inputs.path }}
       source_repo: ${{ inputs.source_repo }}
+      version: ${{ inputs.version }}
     secrets:
       repo_token: ${{ inputs.source_repo_token }}
