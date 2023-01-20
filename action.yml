@@ -72,7 +72,7 @@ runs:
       git rm "${{ steps.parse_action.outputs.path }}" -r --ignore-unmatch
       mkdir -p "${{ steps.parse_action.outputs.path }}" && cp "${{ github.workspace }}/${{ inputs.build_dir }}/." "$_" -a
       git add "${{ steps.parse_action.outputs.path }}"
-      git commit --message="ci: deploy preview for ${{ steps.parse_action.outputs.path }}"
+      git commit --message="ci: deploy preview for ${{ steps.parse_action.outputs.path }}" --allow-empty
       git push origin ${{ inputs.preview_branch }}
 
   - name: Remove the destination directory and commit the changes
@@ -81,7 +81,7 @@ runs:
     working-directory: ../preview_${{ github.sha }}
     run: |
       git rm "${{ steps.parse_action.outputs.path }}" -r --ignore-unmatch
-      git commit --message="ci: remove preview for ${{ steps.parse_action.outputs.path }}"
+      git commit --message="ci: remove preview for ${{ steps.parse_action.outputs.path }}" --allow-empty
       git push origin ${{ inputs.preview_branch }}
 
   - name: Get current ref & commit date
