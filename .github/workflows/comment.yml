@@ -81,7 +81,7 @@ jobs:
         if: ${{ inputs.action == 'deploy' }}
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-          repo: ${{ steps.source_repo.outputs.name }}
+          repo: ${{ steps.parse_repo.outputs.name }}
           GITHUB_TOKEN: ${{ secrets.repo_token }}
           message: "\
             [Pages Preview]\
@@ -100,7 +100,7 @@ jobs:
         if: ${{ inputs.action == 'remove' }}
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-          repo: ${{ steps.source_repo.outputs.name }}
+          repo: ${{ steps.parse_repo.outputs.name }}
           GITHUB_TOKEN: ${{ secrets.repo_token }}
           message: "\
             [Pages Preview]\
