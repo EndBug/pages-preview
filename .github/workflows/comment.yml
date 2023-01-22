@@ -83,17 +83,11 @@ jobs:
         with:
           repo: ${{ steps.parse_repo.outputs.name }}
           GITHUB_TOKEN: ${{ secrets.repo_token }}
-          message: "\
-            [Pages Preview]\
-            (${{ github.server_url }}/EndBug/pages-preview)
+          message: |-
+            [Pages Preview](${{ github.server_url }}/EndBug/pages-preview)
             :---:
-            :rocket: Deployed preview to
-            ${{ inputs.preview_url }}
-            on branch [`${{ inputs.preview_branch }}`](\
-            ${{ github.server_url }}/${{ inputs.preview_repo }}\
-            /tree/${{ inputs.preview_branch }})
-            at ${{ inputs.date }}
-            "
+            :rocket: Deployed preview to ${{ inputs.preview_url }}
+            on branch [`${{ inputs.preview_branch }}`](${{ github.server_url }}/${{ inputs.preview_repo }}/tree/${{ inputs.preview_branch }})
           number: ${{ inputs.pr_number }}
           
       - name: Comment on removal
@@ -102,11 +96,9 @@ jobs:
         with:
           repo: ${{ steps.parse_repo.outputs.name }}
           GITHUB_TOKEN: ${{ secrets.repo_token }}
-          message: "\
-            [Pages Preview]\
-            (${{ github.server_url }}/EndBug/pages-preview)
+          message: |-
+            [Pages Preview](${{ github.server_url }}/EndBug/pages-preview)
             :---:
             Preview removed because the pull request was closed.
             ${{ inputs.date }}
-            "
           number: ${{ inputs.pr_number }}
