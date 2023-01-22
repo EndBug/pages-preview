@@ -7,7 +7,10 @@
 # -----------------------------------------------------------------------------
 
 event_name=$EVENT_NAME
-event_payload=$EVENT_PAYLOAD
+event_type=$EVENT_TYPE
+pr_number=$PR_NUMBER
+ref_name=$REF_NAME
+ref_type=$REF_TYPE
 repo_name=$REPO_NAME
 
 # Default value
@@ -17,7 +20,6 @@ case $event_name in
 "pull_request" | "pull_request_target")
   echo "Event name: $event_name; OK"
 
-  event_type=$(jq .action <<<$event_payload | sed -e 's/^"//' -e 's/"$//')
   echo "Event type: $event_type"
 
   case $event_type in
@@ -32,7 +34,6 @@ case $event_name in
     ;;
   esac
 
-  pr_number=$(jq .number <<<$event_payload | sed -e 's/^"//' -e 's/"$//')
   echo "PR number: $pr_number"
 
   path="$repo_name/pr/$pr_number"
@@ -41,13 +42,11 @@ case $event_name in
 "push")
   echo "Event name: $event_name; OK"
 
-  ref=$(jq .ref <<<$event_payload | sed -e 's/^"//' -e 's/"$//')
-  echo "Ref pushed: $ref"
+  echo "Ref pushed: $ref_name ($ref_type)"
 
-  if [[ $ref == refs/heads/* ]]; then
+  if [[ $ref_type == branch ]]; then
     action="deploy"
-    branch=${ref#refs/heads/}
-    path="$repo_name/branch/$branch"
+    path="$repo_name/branch/$ref_name"
   else
     action="none"
     path=""

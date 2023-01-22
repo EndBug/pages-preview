@@ -48,7 +48,10 @@ runs:
     # outputs: action, path
     env:
       EVENT_NAME: ${{ github.event_name }}
-      EVENT_PAYLOAD: ${{ toJSON(github.event) }}
+      EVENT_TYPE: ${{ github.event.action }}
+      PR_NUMBER: ${{ github.event.number }}
+      REF_NAME: ${{ github.ref_name }}
+      REF_TYPE: ${{ github.ref_type }}
       REPO_NAME: ${{ github.repository }}
 
   - name: Set up the preview repo
