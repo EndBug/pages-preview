@@ -1,0 +1,58 @@
+# -------------------------------------------------------------------------------------------------
+# This workflow is meant to be copied to the source repo, in order to to build the website
+# trigger the deployment.
+# Remember to edit the placeholder commands and env variables below to best suit your needs.
+# You should also create a PREVIEW_TOKEN secret following the action's README.
+# -------------------------------------------------------------------------------------------------
+
+name: Deploy
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+
+jobs:
+  dev:
+    name: Development
+    runs-on: ubuntu-20.04
+    env:
+      PREVIEW_REPO: octocat/preview
+      PAGES_BASE: preview # https://octocat.github.io/preview/...
+
+    steps:
+      - uses: actions/checkout@v3
+
+      # Assuming you're using Node.js
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      # This will calculate the base URL for the website, based on the event that triggered the workflow.
+      # Leave this step as it is, unless you know what you're doing.
+      - name: Determine base URL
+        id: baseurl
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "url=/${{ env.PAGES_BASE }}/${{ github.repository }}/pr/${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          else
+            echo "url=/${{ env.PAGES_BASE }}/${{ github.repository }}/branch/${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      # Run your usual build command, but make sure to use the correct base URL
+      # This example assumes you're using React, and that you're using the PUBLIC_URL env variable
+      - name: Build
+        run: npm run build
+        env:
+          PUBLIC_URL: ${{ steps.baseurl.outputs.url }}
+
+      # This will trigger the action. Make sure to change the build_dir input to the correct directory
+      - uses: EndBug/pages-preview@v1
+        with:
+          build_dir: build # Change this!
+          preview_repo: ${{ env.PREVIEW_REPO }}
+          preview_token: ${{ secrets.PREVIEW_TOKEN }}
