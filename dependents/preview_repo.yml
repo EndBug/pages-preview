@@ -61,10 +61,10 @@ concurrency:
 jobs:
   # VERSION: update before changing the major version
   version-check:
+    name: Check version
     runs-on: ubuntu-latest
     steps:
-    - name: Check version
-      run: |
+    - run: |
         if [ "${{ github.event.inputs.version }}" != "v1" ]; then
           echo "This workflow is meant to be used with EndBug/pages-preview@v1, please update your action."
           exit 1
