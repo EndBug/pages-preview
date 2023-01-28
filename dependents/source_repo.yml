@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-20.04
     env:
       PREVIEW_REPO: octocat/preview
-      PAGES_BASE: preview # https://octocat.github.io/preview/...
+      PAGES_BASE: https://octocat.github.io/preview
 
     steps:
       - uses: actions/checkout@v3
@@ -38,9 +38,9 @@ jobs:
         id: baseurl
         run: |
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "url=/${{ env.PAGES_BASE }}/${{ github.repository }}/pr/${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+            echo "url=${{ env.PAGES_BASE }}/${{ github.repository }}/pr/${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
           else
-            echo "url=/${{ env.PAGES_BASE }}/${{ github.repository }}/branch/${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "url=${{ env.PAGES_BASE }}/${{ github.repository }}/branch/${{ github.ref_name }}" >> $GITHUB_OUTPUT
           fi
 
       # Run your usual build command, but make sure to use the correct base URL
@@ -54,5 +54,6 @@ jobs:
       - uses: EndBug/pages-preview@v1
         with:
           build_dir: build # Change this!
+          preview_base_url: ${{ env.PAGES_BASE }}
           preview_repo: ${{ env.PREVIEW_REPO }}
           preview_token: ${{ secrets.PREVIEW_TOKEN }}

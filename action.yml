@@ -17,11 +17,10 @@ inputs:
   preview_token:
     description: The token to access the preview repo
     required: true
+  preview_base_url:
+    description: The GitHub Pages base URL of the preview repo (e.g. https://octocat.github.io/preview)
+    required: true
   # Not required
-  preview_workflow_file_name:
-    description: The name of the workflow file that contains the comment workflow in the preview repo. If you use my template, the name is already 'preview.yml'
-    default: preview.yml
-    required: false
   commit_author_name:
     description: The name of the author of the resulting commit
     default: GitHub Actions
@@ -34,8 +33,9 @@ inputs:
     description: The name of the branch that hosts the previews
     default: gh-pages
     required: false
-  preview_base_url:
-    description: The GitHub Pages base URL of the preview repo
+  preview_workflow_file_name:
+    description: The name of the workflow file that contains the comment workflow in the preview repo. If you use my template, the name is already 'preview.yml'
+    default: preview.yml
     required: false
 
 runs:
@@ -99,7 +99,7 @@ runs:
 
   - name: Parse preview repo owner and name
     if: ${{ steps.parse_action.outputs.action != 'none' }}
-    id: parse_repo
+    id: parse_preview_repo
     shell: bash
     # outputs: owner, name
     run: |
@@ -109,24 +109,50 @@ runs:
   - name: Trigger deployment in the preview repo
     uses: convictional/trigger-workflow-and-wait@v1.6.5
     if: ${{ steps.parse_action.outputs.action != 'none' }}
+    id: dispatch
     with:
-      owner: ${{ steps.parse_repo.outputs.owner }}
-      repo: ${{ steps.parse_repo.outputs.name }}
+      owner: ${{ steps.parse_preview_repo.outputs.owner }}
+      repo: ${{ steps.parse_preview_repo.outputs.name }}
       github_token: ${{ inputs.preview_token }}
       workflow_file_name: ${{ inputs.preview_workflow_file_name }}
       wait_interval: 10
       # VERSION: update before changing the major version
       client_payload: >-
         {
-          "action": "${{ steps.parse_action.outputs.action }}",
-          "date": "${{ steps.current_ref.outputs.date }}",
-          "event_name": "${{ github.event_name }}",
-          "path": "${{ steps.parse_action.outputs.path }}",
-          "pr_number": "${{ github.event.number || 0 }}",
-          "preview_branch": "${{ inputs.preview_branch }}",
           "ref": "${{ steps.current_ref.outputs.sha }}",
-          "source_repo": "${{ github.repository }}",
-          "source_repo_token": "${{ github.token }}",
           "version": "v1"
         }
       propagate_failure: true
+
+  - name: Parse source repo owner and name
+    if: ${{ startsWith(inputs.event_name, 'pull_request') && steps.parse_action.outputs.action != 'none' && steps.dispatch.outputs.conclusion == 'success' }}
+    id: parse_source_repo
+    shell: bash
+    # outputs: owner, name
+    run: |
+      echo "owner=$(cut -d "/" -f 1 <<<"${{ github.repository }}")" >> $GITHUB_OUTPUT
+      echo "name=$(cut -d "/" -f 2 <<<"${{ github.repository }}")" >> $GITHUB_OUTPUT
+
+  - name: Comment on deployment
+    if: ${{ startsWith(inputs.event_name, 'pull_request') && steps.parse_action.outputs.action == 'deploy' && steps.dispatch.outputs.conclusion == 'success' }}
+    uses: marocchino/sticky-pull-request-comment@v2
+    with:
+      repo: ${{ steps.parse_source_repo.outputs.name }}
+      message: |-
+        [Pages Preview](https://github.com/EndBug/pages-preview)
+        :---:
+        :rocket: Deployed preview to ${{ inputs.preview_base_url }}/${{ steps.parse_action.outputs.path }}
+        on branch [`${{ inputs.preview_branch }}`](${{ github.server_url }}/${{ inputs.preview_repo }}/tree/${{ inputs.preview_branch }}) at ${{ steps.current_ref.outputs.date }}
+      number: ${{ github.event.number }}
+      
+  - name: Comment on removal
+    if: ${{ startsWith(inputs.event_name, 'pull_request') && steps.parse_action.outputs.action == 'remove' && steps.dispatch.outputs.conclusion == 'success' }}
+    uses: marocchino/sticky-pull-request-comment@v2
+    with:
+      repo: ${{ steps.parse_source_repo.outputs.name }}
+      message: |-
+        [Pages Preview](https://github.com/EndBug/pages-preview)
+        :---:
+        Preview removed because the pull request was closed.
+        ${{ steps.current_ref.outputs.date }}
+      number: ${{ github.event.number }}

@@ -7,46 +7,15 @@ name: Deploy previews and comment on PR
 on:
   workflow_dispatch:
     inputs:
-      action:
-        description: 'The action that was performed, either "deploy" or "remove"'
-        required: true
-        type: string
-      date:
-        description: 'The date of the commit that was pushed'
-        required: true
-        type: string
-      event_name: 
-        description: 'The name of the event that triggered the workflow'
-        required: true
-        type: string
-      path:
-        description: 'The path of the preview that has been edited'
-        required: true
-        type: string
-      pr_number:
-        description: 'The number of the pull request that triggered the workflow, use 0 if not a PR.'
-        required: true
-        type: string
-      preview_branch:
-        description: 'The name of the branch that hosts the previews'
-        required: true
-        type: string
       ref:
         description: 'The ref to deploy'
-        required: true
-        type: string
-      source_repo:
-        description: 'The repository to comment to, in the Owner/Name format'
-        required: true
-        type: string
-      source_repo_token:
-        description: 'The token to comment to the source repo'
         required: true
         type: string
       version:
         description: 'The version of EndBug/pages-preview that triggered the workflow'
         required: true
         type: string
+
 
 permissions:
   contents: read
@@ -60,7 +29,7 @@ concurrency:
 jobs:
   # VERSION: update before changing the major version
   version-check:
-    name: Check version
+    name: Check action version
     runs-on: ubuntu-latest
     steps:
     - run: |
@@ -78,9 +47,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
 
-    outputs:
-      page_url: ${{ steps.deployment.outputs.page_url }}
-
     steps:
       - uses: actions/checkout@v3
         with:
@@ -91,21 +57,3 @@ jobs:
           path: '.'
       - id: deployment
         uses: actions/deploy-pages@v1
-
-  comment:
-    name: Comment on the original PR
-    needs: [version-check, deploy]
-    if: ${{ startsWith(inputs.event_name, 'pull_request') && inputs.pr_number != 0 }}
-
-    # VERSION: update before changing the major version
-    uses: EndBug/pages-preview/.github/workflows/comment.yml@v1
-    with:
-      action: ${{ inputs.action }}
-      date: ${{ inputs.date }}
-      pr_number: ${{ inputs.pr_number }}
-      preview_branch: ${{ inputs.preview_branch }}
-      preview_url: ${{ needs.deploy.outputs.page_url }}/${{ inputs.path }}
-      source_repo: ${{ inputs.source_repo }}
-      version: ${{ inputs.version }}
-    secrets:
-      repo_token: ${{ inputs.source_repo_token }}
