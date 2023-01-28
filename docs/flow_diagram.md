@@ -21,7 +21,7 @@ flowchart TD
       s3[.../pr/:number] --> s5
       s4[.../branch/:name] --> s5
 
-      s5[Build static website\nusing the base URL] --> s6
+      s5[Build static website\nusing this base URL] --> s6
       s6[Run EndBug/pages-preview action]
       s7[Return workflow status]
     end
@@ -34,7 +34,7 @@ flowchart TD
       
       a2 -- Deploy --> a3
       a2 -- Remove --> a4
-      a2 -- None --> a7
+      a2 -- Nothing --> a7
 
       a3[Copy current build to\nthe preview repo] --> a5
       a4[Remove the preview\nfrom the preview repo] --> a5
