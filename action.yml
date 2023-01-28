@@ -125,14 +125,14 @@ runs:
       propagate_failure: true
 
   - run: |
-      echo ${{ startsWith(inputs.event_name, 'pull_request') }}
+      echo ${{ startsWith(github.event_name, 'pull_request') }}
       echo ${{ steps.parse_action.outputs.action }}
       echo ${{ steps.dispatch.outputs.conclusion }}
       echo ${{ steps.dispatch.outputs }}
     shell: bash
 
   - name: Parse source repo owner and name
-    if: ${{ startsWith(inputs.event_name, 'pull_request') && steps.parse_action.outputs.action != 'none' && steps.dispatch.outputs.conclusion == 'success' }}
+    if: ${{ startsWith(github.event_name, 'pull_request') && steps.parse_action.outputs.action != 'none' && steps.dispatch.outputs.conclusion == 'success' }}
     id: parse_source_repo
     shell: bash
     # outputs: owner, name
@@ -141,7 +141,7 @@ runs:
       echo "name=$(cut -d "/" -f 2 <<<"${{ github.repository }}")" >> $GITHUB_OUTPUT
 
   - name: Comment on deployment
-    if: ${{ startsWith(inputs.event_name, 'pull_request') && steps.parse_action.outputs.action == 'deploy' && steps.dispatch.outputs.conclusion == 'success' }}
+    if: ${{ startsWith(github.event_name, 'pull_request') && steps.parse_action.outputs.action == 'deploy' && steps.dispatch.outputs.conclusion == 'success' }}
     uses: marocchino/sticky-pull-request-comment@v2
     with:
       repo: ${{ steps.parse_source_repo.outputs.name }}
@@ -153,7 +153,7 @@ runs:
       number: ${{ github.event.number }}
       
   - name: Comment on removal
-    if: ${{ startsWith(inputs.event_name, 'pull_request') && steps.parse_action.outputs.action == 'remove' && steps.dispatch.outputs.conclusion == 'success' }}
+    if: ${{ startsWith(github.event_name, 'pull_request') && steps.parse_action.outputs.action == 'remove' && steps.dispatch.outputs.conclusion == 'success' }}
     uses: marocchino/sticky-pull-request-comment@v2
     with:
       repo: ${{ steps.parse_source_repo.outputs.name }}
