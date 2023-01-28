@@ -124,6 +124,13 @@ runs:
         }
       propagate_failure: true
 
+  - run: |
+      echo ${{ startsWith(inputs.event_name, 'pull_request') }}
+      echo ${{ steps.parse_action.outputs.action }}
+      echo ${{ steps.dispatch.outputs.conclusion }}
+      echo ${{ steps.dispatch.outputs }}
+    shell: bash
+
   - name: Parse source repo owner and name
     if: ${{ startsWith(inputs.event_name, 'pull_request') && steps.parse_action.outputs.action != 'none' && steps.dispatch.outputs.conclusion == 'success' }}
     id: parse_source_repo
