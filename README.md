@@ -66,5 +66,52 @@ This steps need to be repeated for each repo you want to use this action on.
   Make sure to change the `PREVIEW_REPO` and `PAGES_BASE` env variable, along with the commands needed to build your website.  
   Also, make sure to change `EndBug/pages-preview`'s inputs to match your needs: more info on that in the ["Inputs"](#inputs) section of this file.
 
-All done 🎉  
-You're now ready to use the action!
+All done! You're now ready to use the action 🎉
+
+## Inputs
+
+```yaml
+- uses: EndBug/pages-preview@v1
+  with:
+    # The directory in which the website has been built, in the a/b/c format
+    build_dir: build
+
+    # The GitHub Pages base URL of the preview repo
+    preview_base_url: https://octocat.github.io/preview
+
+    # The repository to push previews to, in the Owner/Name format
+    preview_repo: octocat/preview
+
+    # The token to access the preview repo, that you created during setup
+    preview_token: ${{ secrets.PREVIEW_TOKEN }}
+
+    # --- OPTIONAL ---
+
+    # The name of the author of the resulting commit
+    # Default: the GitHub Actor
+    git_author_name: Mona
+
+    # The email of the author of the resulting commit
+    # Default: the GitHub Actor's
+    git_committer_name: mona@users.noreply.github.com
+
+    # The committer of the resulting commit
+    # Default: copies git_author_name
+    git_committer_name: GitHub Actions
+
+    # The email of the committer of the resulting commit
+    # Default: copies git_author_email
+    git_committer_email: 41898282+github-actions[bot]@users.noreply.github.com
+
+    # Whether to comment on PRs
+    # Default: 'true'
+    pr_comment: 'false'
+
+    # The name of the branch that hosts the previews
+    # Default: gh-pages
+    preview_branch: custom-pages-branch
+
+    # The name of the workflow file that contains the comment workflow in the preview repo
+    # Default: preview.yml
+    preview_workflow_file_name: custom_workflow.yml
+```

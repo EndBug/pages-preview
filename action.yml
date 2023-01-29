@@ -9,16 +9,16 @@ branding:
 inputs:
   # Required
   build_dir: 
-    description: The directory in which the website has been built. Should be written as a/b/c
+    description: The directory in which the website has been built, in the a/b/c format
+    required: true
+  preview_base_url:
+    description: The GitHub Pages base URL of the preview repo (e.g. https://octocat.github.io/preview)
     required: true
   preview_repo:
     description: The repository to push previews to, in the Owner/Name format
     required: true
   preview_token:
     description: The token to access the preview repo
-    required: true
-  preview_base_url:
-    description: The GitHub Pages base URL of the preview repo (e.g. https://octocat.github.io/preview)
     required: true
   # Not required
   git_author_name:
