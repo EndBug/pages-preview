@@ -38,17 +38,23 @@ jobs:
         id: baseurl
         run: |
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "url=${{ env.PAGES_BASE }}/${{ github.repository }}/pr/${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+            full="${{ env.PAGES_BASE }}/${{ github.repository }}/pr/${{ github.event.pull_request.number }}"
           else
-            echo "url=${{ env.PAGES_BASE }}/${{ github.repository }}/branch/${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            full="${{ env.PAGES_BASE }}/${{ github.repository }}/branch/${{ github.ref_name }}"
           fi
+
+          relative=/$(echo $full | cut -d/ -f4-)
+
+          echo "full=$full" >> $GITHUB_OUTPUT
+          echo "relative=$relative" >> $GITHUB_OUTPUT
+        shell: bash
 
       # Run your usual build command, but make sure to use the correct base URL
       # This example assumes you're using React, and that you're using the PUBLIC_URL env variable
       - name: Build
         run: npm run build
         env:
-          PUBLIC_URL: ${{ steps.baseurl.outputs.url }}
+          PUBLIC_URL: ${{ steps.baseurl.outputs.relative }}
 
       # This will trigger the action. Make sure to change the build_dir input to the correct directory
       - uses: EndBug/pages-preview@v1
