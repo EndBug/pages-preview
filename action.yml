@@ -23,11 +23,11 @@ inputs:
   # Not required
   commit_author_name:
     description: The name of the author of the resulting commit
-    default: GitHub Actions
+    default: ${{ github.actor }}
     required: false
   commit_author_email:
     description: The email of the author of the resulting commit
-    default: 41898282+github-actions[bot]@users.noreply.github.com
+    default: ${{ github.actor }}@users.noreply.github.com
     required: false
   pr_comment:
     description: Whether to comment on PRs
@@ -79,7 +79,7 @@ runs:
       git rm "${{ steps.parse_action.outputs.path }}" -r --ignore-unmatch
       mkdir -p "${{ steps.parse_action.outputs.path }}" && cp "${{ github.workspace }}/${{ inputs.build_dir }}/." "$_" -a
       git add "${{ steps.parse_action.outputs.path }}"
-      git commit --message="ci: deploy preview for ${{ steps.parse_action.outputs.path }}" --allow-empty
+      git commit --message="ci: deploy preview for ${{ steps.parse_action.outputs.path }}\n\nCommit created with [EndBug/pages-preview](https://github.com/EndBug/pages-preview)" --allow-empty
       git push origin ${{ inputs.preview_branch }}
 
   - name: Remove the destination directory and commit the changes
@@ -88,7 +88,7 @@ runs:
     working-directory: ../preview_${{ github.sha }}
     run: |
       git rm "${{ steps.parse_action.outputs.path }}" -r --ignore-unmatch
-      git commit --message="ci: remove preview for ${{ steps.parse_action.outputs.path }}" --allow-empty
+      git commit --message="ci: remove preview for ${{ steps.parse_action.outputs.path }}\n\nCommit created with [EndBug/pages-preview](https://github.com/EndBug/pages-preview)" --allow-empty
       git push origin ${{ inputs.preview_branch }}
 
   - name: Get current ref & commit date
