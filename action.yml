@@ -21,13 +21,21 @@ inputs:
     description: The GitHub Pages base URL of the preview repo (e.g. https://octocat.github.io/preview)
     required: true
   # Not required
-  commit_author_name:
+  git_author_name:
     description: The name of the author of the resulting commit
     default: ${{ github.actor }}
     required: false
-  commit_author_email:
+  git_author_email:
     description: The email of the author of the resulting commit
     default: ${{ github.actor }}@users.noreply.github.com
+    required: false
+  git_committer_name: 
+    description: The committer of the resulting commit
+    # default: copies git_author_email at runtime
+    required: false
+  git_committer_email:
+    description: The email of the committer of the resulting commit
+    # default: copies git_author_email at runtime
     required: false
   pr_comment:
     description: Whether to comment on PRs
@@ -65,10 +73,10 @@ runs:
       cd ${{ github.workspace }}/..
       git clone "https://git:${{ inputs.preview_token }}@github.com/${{ inputs.preview_repo }}.git" preview_${{ github.sha }}
       cd preview_${{ github.sha }} 
-      git config --global user.name ${{ inputs.commit_author_name }}
-      git config --global user.email ${{ inputs.commit_author_email }}
-      echo "GIT_COMMITTER_NAME=GitHub Actions" >> $GITHUB_ENV
-      echo "GIT_COMMITTER_EMAIL=41898282+github-actions[bot]@users.noreply.github.com" >> $GITHUB_ENV
+      git config --global user.name ${{ inputs.git_author_name }}
+      git config --global user.email ${{ inputs.git_author_email }}
+      echo "GIT_COMMITTER_NAME=${{ inputs.git_committer_name || inputs.git_author_name }}" >> $GITHUB_ENV
+      echo "GIT_COMMITTER_EMAIL=${{ inputs.git_committer_email || inputs.git_author_email }}" >> $GITHUB_ENV
       git checkout ${{ inputs.preview_branch }}
     
   - name: Copy the build directory to the destination and commit the changes
@@ -79,7 +87,9 @@ runs:
       git rm "${{ steps.parse_action.outputs.path }}" -r --ignore-unmatch
       mkdir -p "${{ steps.parse_action.outputs.path }}" && cp "${{ github.workspace }}/${{ inputs.build_dir }}/." "$_" -a
       git add "${{ steps.parse_action.outputs.path }}"
-      git commit --message="ci: deploy preview for ${{ steps.parse_action.outputs.path }}\n\nCommit created with [EndBug/pages-preview](https://github.com/EndBug/pages-preview)" --allow-empty
+      git commit --message="ci: deploy preview for ${{ steps.parse_action.outputs.path }}
+      
+      Commit created with [EndBug/pages-preview](https://github.com/EndBug/pages-preview)" --allow-empty
       git push origin ${{ inputs.preview_branch }}
 
   - name: Remove the destination directory and commit the changes
@@ -88,7 +98,9 @@ runs:
     working-directory: ../preview_${{ github.sha }}
     run: |
       git rm "${{ steps.parse_action.outputs.path }}" -r --ignore-unmatch
-      git commit --message="ci: remove preview for ${{ steps.parse_action.outputs.path }}\n\nCommit created with [EndBug/pages-preview](https://github.com/EndBug/pages-preview)" --allow-empty
+      git commit --message="ci: remove preview for ${{ steps.parse_action.outputs.path }}
+      
+      Commit created with [EndBug/pages-preview](https://github.com/EndBug/pages-preview)" --allow-empty
       git push origin ${{ inputs.preview_branch }}
 
   - name: Get current ref & commit date
