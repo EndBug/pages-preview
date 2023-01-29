@@ -29,6 +29,10 @@ inputs:
     description: The email of the author of the resulting commit
     default: 41898282+github-actions[bot]@users.noreply.github.com
     required: false
+  pr_comment:
+    description: Whether to comment on PRs
+    default: 'true'
+    required: false
   preview_branch:
     description: The name of the branch that hosts the previews
     default: gh-pages
@@ -123,9 +127,20 @@ runs:
           "version": "v1"
         }
       propagate_failure: true
+  
+  - name: Determine whether to comment on PR
+    id: pr_comment
+    shell: bash
+    run: >-
+      echo "result=${{
+        inputs.pr_comment == 'true' && 
+        startsWith(github.event_name, 'pull_request') && 
+        steps.parse_action.outputs.action != 'none' && 
+        steps.dispatch.outputs.conclusion == 'success' 
+      }}" >> $GITHUB_OUTPUT
 
   - name: Parse source repo owner and name
-    if: ${{ startsWith(github.event_name, 'pull_request') && steps.parse_action.outputs.action != 'none' && steps.dispatch.outputs.conclusion == 'success' }}
+    if: ${{ steps.pr_comment.outputs.result == 'true' }}
     id: parse_source_repo
     shell: bash
     # outputs: owner, name
@@ -134,7 +149,7 @@ runs:
       echo "name=$(cut -d "/" -f 2 <<<"${{ github.repository }}")" >> $GITHUB_OUTPUT
 
   - name: Comment on deployment
-    if: ${{ startsWith(github.event_name, 'pull_request') && steps.parse_action.outputs.action == 'deploy' && steps.dispatch.outputs.conclusion == 'success' }}
+    if: ${{ steps.pr_comment.outputs.result == 'true' && steps.parse_action.outputs.action == 'deploy' }}
     uses: marocchino/sticky-pull-request-comment@v2
     with:
       repo: ${{ steps.parse_source_repo.outputs.name }}
@@ -146,7 +161,7 @@ runs:
       number: ${{ github.event.number }}
       
   - name: Comment on removal
-    if: ${{ startsWith(github.event_name, 'pull_request') && steps.parse_action.outputs.action == 'remove' && steps.dispatch.outputs.conclusion == 'success' }}
+    if: ${{ steps.pr_comment.outputs.result == 'true' && steps.parse_action.outputs.action == 'remove' }}
     uses: marocchino/sticky-pull-request-comment@v2
     with:
       repo: ${{ steps.parse_source_repo.outputs.name }}
