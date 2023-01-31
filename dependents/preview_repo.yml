@@ -1,6 +1,7 @@
 # -------------------------------------------------------------------------------------------------
 # This workflow is meant to be copied to the preview repo, in order to handle the actual GitHub
 # Pages deployment, along with any other accessory operation, like commenting on a PR.
+# Source: https://github.com/EndBug/pages-preview
 # -------------------------------------------------------------------------------------------------
 
 name: Deploy previews and comment on PR
