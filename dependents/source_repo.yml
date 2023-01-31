@@ -13,7 +13,7 @@ on:
   pull_request:
 
 concurrency:
-  group: ${{ github.event_name }}-${{ github.event.pull_request.number || github.ref_name }}
+  group: preview-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
