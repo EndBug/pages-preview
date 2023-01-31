@@ -18,6 +18,14 @@ If you're interested in the logic behind this action, you can check out the [flo
 
 ### Preview repo
 
+#### Using my template
+
+1. Go to [this template](https://github.com/EndBug/preview-template) and generate your repo from there: click "Use this template", fill in name and description, check that "Include all branches" is ticked, and create the repo.
+
+2. Go into your repo settings, in the Pages tab (Repo settings > Pages) and set "GitHub Actions" as the source.
+
+#### Manually
+
 1. Create a new repo that will host your previews.  
   This repo will be used for the previews from all your repositories, so you'll need to set this up only once.
 
