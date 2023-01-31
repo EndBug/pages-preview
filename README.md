@@ -3,7 +3,7 @@
 ## Table of contents
 
 - [What does it do?](#what-does-it-do)
-- [Setup](#faqs)
+- [Setup](#setup)
 - [Inputs](#inputs)
 
 ## What does it do?
