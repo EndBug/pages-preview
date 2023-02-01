@@ -34,16 +34,19 @@ jobs:
 
       # Assuming you're using Node.js
       - uses: actions/setup-node@v3
+        if: ${{ github.event.action != 'closed' }} # Skipping these steps if the PR has been closed
         with:
           node-version: '16'
           cache: npm
 
       - name: Install dependencies
+        if: ${{ github.event.action != 'closed' }}
         run: npm ci --ignore-scripts
 
       # This will calculate the base URL for the website, based on the event that triggered the workflow.
       # Leave this step as it is, unless you know what you're doing.
       - name: Determine base URL
+        if: ${{ github.event.action != 'closed' }}
         id: baseurl
         run: |
           if [ "${{ github.event_name }}" == "pull_request_target" ]; then
@@ -61,6 +64,7 @@ jobs:
       # Run your usual build command, but make sure to use the correct base URL
       # This example assumes you're using React, and that you're using the PUBLIC_URL env variable
       - name: Build
+        if: ${{ github.event.action != 'closed' }}
         run: npm run build
         env:
           PUBLIC_URL: ${{ steps.baseurl.outputs.relative }}
