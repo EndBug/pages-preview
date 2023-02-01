@@ -10,10 +10,10 @@ on:
   push:
     branches:
       - 'main'
-  pull_request:
+  pull_request_target:
 
 concurrency:
-  group: preview-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref_name }}
+  group: preview-${{ github.event_name }}-${{ github.event.number || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -41,8 +41,8 @@ jobs:
       - name: Determine base URL
         id: baseurl
         run: |
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            full="${{ env.PAGES_BASE }}/${{ github.repository }}/pr/${{ github.event.pull_request.number }}"
+          if [ "${{ github.event_name }}" == "pull_request_target" ]; then
+            full="${{ env.PAGES_BASE }}/${{ github.repository }}/pr/${{ github.event.number }}"
           else
             full="${{ env.PAGES_BASE }}/${{ github.repository }}/branch/${{ github.ref_name }}"
           fi
