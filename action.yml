@@ -162,6 +162,7 @@ runs:
       status: ${{ job.status }}
       env: ${{ steps.deployment.outputs.env }}
       deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+      env_url: ${{ inputs.preview_base_url }}/${{ steps.parse_action.outputs.path }}
 
   - name: Deactivate previous deployments
     if: ${{ success() }}
