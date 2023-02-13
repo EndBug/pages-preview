@@ -21,7 +21,7 @@ inputs:
     description: The token to access the preview repo
     required: true
   # Not required
-  deloyment_env:
+  deployment_env:
     description: The name of the environment to use for the deployment
     default: 'preview'
     required: false
