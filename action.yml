@@ -170,11 +170,13 @@ runs:
     with:
       result-encoding: string
       script: |
-        let deployments = (await github.rest.repos.listDeployments({
+        let deployments = await github.rest.repos.listDeployments({
           owner: context.repo.owner,
           repo: context.repo.repo,
           task: 'deploy:${{ steps.parse_action.outputs.path }}'
-        }))
+        })
+
+        deployments = deployments
           .map(d => d.id)
           .filter(id => id != '${{ steps.deployment.outputs.deployment_id }}')
 
