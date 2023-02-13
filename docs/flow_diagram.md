@@ -27,16 +27,21 @@ flowchart TD
         a1[Action run triggered] --> 
 
         a2{What should\nthe action do?}
-        a2 -- Deploy --> a3
+        a2 -- Deploy --> a30
         a2 -- Remove --> a4
         a2 -- Nothing --> aRet
 
+        a30[Create a new deployment] -->
         a3[Copy current build to\nthe preview repo] --> a5
+
         a4[Remove the preview\nfrom the preview repo] --> a5
 
         a5[Parse metadata] -->
         a6[Trigger GitHub Pages\ndeployment on the preview\nrepo] -->
         a7[Wait for workflow run to\nend in preview repo] -->
+
+        a80[Update deployment status] -->
+        a81[Deactivate previous deployments] -->
 
         a8{Is the\nevent a pull\nrequest?}
         a8 -- Yes --> a9
@@ -56,10 +61,17 @@ flowchart TD
     end
 
     PR[PR comment updated]
+    D0[New pending deployment created]
+    D1[Deployment status updated]
+    D2[Previous deployments deactivated]
+
     s6 --> a1
     aRet --> sRet
     a11 -.-> PR
     a10 -.-> PR
+    a30 -.-> D0
+    a80 -.-> D1
+    a81 -.-> D2
   end
 
   subgraph previewRepo [Preview repo]
