@@ -21,6 +21,14 @@ inputs:
     description: The token to access the preview repo
     required: true
   # Not required
+  deployment_env:
+    description: The name of the environment to use for the deployment
+    default: 'preview'
+    required: false
+  deployments:
+    description: Whether to use the deployments API
+    default: 'true'
+    required: false
   git_author_name:
     description: The name of the author of the resulting commit
     default: ${{ github.actor }}
@@ -62,9 +70,19 @@ runs:
       EVENT_NAME: ${{ github.event_name }}
       EVENT_TYPE: ${{ github.event.action }}
       PR_NUMBER: ${{ github.event.number }}
-      REF_NAME: ${{ github.ref_name }}
+      REF_NAME: ${{ github.ref_name }} # Doesn't affect PRs
       REF_TYPE: ${{ github.ref_type }}
       REPO_NAME: ${{ github.repository }}
+
+  - name: Create a new deployment
+    if: ${{ steps.parse_action.outputs.action == 'deploy' && inputs.deployments == 'true' }}
+    id: deployment
+    uses: EndBug/deployments@140-task
+    with:
+      step: start
+      env: ${{ inputs.deployment_env }}
+      ref: ${{ github.head_ref || github.ref }}
+      task: deploy:${{ steps.parse_action.outputs.path }}
 
   - name: Set up the preview repo
     if: ${{ steps.parse_action.outputs.action != 'none' }}
@@ -124,7 +142,7 @@ runs:
 
   - name: Trigger deployment in the preview repo
     uses: convictional/trigger-workflow-and-wait@v1.6.5
-    if: ${{ steps.parse_action.outputs.action != 'none' }}
+    if: ${{ steps.parse_action.outputs.action != 'none' && inputs.deployments == 'true' }}
     id: dispatch
     with:
       owner: ${{ steps.parse_preview_repo.outputs.owner }}
@@ -139,6 +157,44 @@ runs:
           "version": "v1"
         }
       propagate_failure: true
+
+  - name: Set deployment status
+    if: ${{ always() && steps.parse_action.outputs.action == 'deploy' && inputs.deployments == 'true' }}
+    uses: EndBug/deployments@140-task
+    with:
+      step: finish
+      status: ${{ job.status }}
+      env: ${{ steps.deployment.outputs.env }}
+      deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+      env_url: ${{ inputs.preview_base_url }}/${{ steps.parse_action.outputs.path }}
+      override: false
+      auto_inactive: false
+
+  - name: Deactivate previous deployments
+    if: ${{ success() && inputs.deployments == 'true' }}
+    uses: actions/github-script@v6
+    with:
+      result-encoding: string
+      script: |
+        let deployments = (await github.rest.repos.listDeployments({
+          owner: context.repo.owner,
+          repo: context.repo.repo,
+          task: 'deploy:${{ steps.parse_action.outputs.path }}'
+        }))
+          .data
+          .filter(d => d.id != '${{ steps.deployment.outputs.deployment_id }}' && d.task == 'deploy:${{ steps.parse_action.outputs.path }}')
+          .map(d => d.id)
+
+        console.log(`Found ${deployments.length} deployments to deactivate`, deployments)
+
+        for (id of deployments) {
+          await github.rest.repos.createDeploymentStatus({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            deployment_id: id,
+            state: 'inactive'
+          })
+        }
   
   - name: Determine whether to comment on PR
     id: pr_comment
