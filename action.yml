@@ -163,6 +163,8 @@ runs:
       env: ${{ steps.deployment.outputs.env }}
       deployment_id: ${{ steps.deployment.outputs.deployment_id }}
       env_url: ${{ inputs.preview_base_url }}/${{ steps.parse_action.outputs.path }}
+      override: false
+      auto_inactive: false
 
   - name: Deactivate previous deployments
     if: ${{ success() }}
@@ -176,8 +178,8 @@ runs:
           task: 'deploy:${{ steps.parse_action.outputs.path }}'
         }))
           .data
+          .filter(d => d.id != '${{ steps.deployment.outputs.deployment_id }}' && d.task == 'deploy:${{ steps.parse_action.outputs.path }}')
           .map(d => d.id)
-          .filter(id => id != '${{ steps.deployment.outputs.deployment_id }}')
 
         console.log(`Found ${deployments.length} deployments to deactivate`, deployments)
 
