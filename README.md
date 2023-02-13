@@ -98,6 +98,10 @@ All done! You're now ready to use the action 🎉
     # Default: 'preview'
     deployment_env: 'development'
 
+    # Whether to use the deployments API
+    # Default: 'true'
+    deployments: false
+
     # The name of the author of the resulting commit
     # Default: the GitHub Actor
     git_author_name: Mona

@@ -25,6 +25,10 @@ inputs:
     description: The name of the environment to use for the deployment
     default: 'preview'
     required: false
+  deployments:
+    description: Whether to use the deployments API
+    default: 'true'
+    required: false
   git_author_name:
     description: The name of the author of the resulting commit
     default: ${{ github.actor }}
@@ -71,7 +75,7 @@ runs:
       REPO_NAME: ${{ github.repository }}
 
   - name: Create a new deployment
-    if: ${{ steps.parse_action.outputs.action == 'deploy' }}
+    if: ${{ steps.parse_action.outputs.action == 'deploy' && inputs.deployments == 'true' }}
     id: deployment
     uses: EndBug/deployments@140-task
     with:
@@ -138,7 +142,7 @@ runs:
 
   - name: Trigger deployment in the preview repo
     uses: convictional/trigger-workflow-and-wait@v1.6.5
-    if: ${{ steps.parse_action.outputs.action != 'none' }}
+    if: ${{ steps.parse_action.outputs.action != 'none' && inputs.deployments == 'true' }}
     id: dispatch
     with:
       owner: ${{ steps.parse_preview_repo.outputs.owner }}
@@ -155,7 +159,7 @@ runs:
       propagate_failure: true
 
   - name: Set deployment status
-    if: ${{ always() && steps.parse_action.outputs.action == 'deploy' }}
+    if: ${{ always() && steps.parse_action.outputs.action == 'deploy' && inputs.deployments == 'true' }}
     uses: EndBug/deployments@140-task
     with:
       step: finish
@@ -167,7 +171,7 @@ runs:
       auto_inactive: false
 
   - name: Deactivate previous deployments
-    if: ${{ success() }}
+    if: ${{ success() && inputs.deployments == 'true' }}
     uses: actions/github-script@v6
     with:
       result-encoding: string
