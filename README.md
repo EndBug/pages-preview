@@ -94,6 +94,9 @@ All done! You're now ready to use the action 🎉
     preview_token: ${{ secrets.PREVIEW_TOKEN }}
 
     # --- OPTIONAL ---
+    # The name of the environment to use for the deployment
+    # Default: 'preview'
+    deployment_env: 'development'
 
     # The name of the author of the resulting commit
     # Default: the GitHub Actor
