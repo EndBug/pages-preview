@@ -121,6 +121,14 @@ runs:
       Commit created with [EndBug/pages-preview](https://github.com/EndBug/pages-preview)" --allow-empty
       git push origin ${{ inputs.preview_branch }}
 
+  - name: Check whether there has been any change in the preview repo
+    if: ${{ steps.parse_action.outputs.action != 'none' }}
+    id: check_changes
+    shell: bash
+    working-directory: ../preview_${{ github.sha }}
+    run: |
+      echo "changed=$(git diff --exit-code --quiet HEAD^..HEAD && echo "false" || echo "true")" >> $GITHUB_OUTPUT
+
   - name: Get current ref & commit date
     if: ${{ steps.parse_action.outputs.action != 'none' }}
     id: current_ref
@@ -142,7 +150,7 @@ runs:
 
   - name: Trigger deployment in the preview repo
     uses: convictional/trigger-workflow-and-wait@v1.6.5
-    if: ${{ steps.parse_action.outputs.action != 'none' && inputs.deployments == 'true' }}
+    if: ${{ steps.parse_action.outputs.action != 'none' && inputs.deployments == 'true' && steps.check_changes.outputs.changed == 'true'}}
     id: dispatch
     with:
       owner: ${{ steps.parse_preview_repo.outputs.owner }}
