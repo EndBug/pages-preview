@@ -127,7 +127,9 @@ runs:
     shell: bash
     working-directory: ../preview_${{ github.sha }}
     run: |
-      echo "changed=$(git diff --exit-code --quiet HEAD^..HEAD && echo "false" || echo "true")" >> $GITHUB_OUTPUT
+      changed=$(git diff --exit-code --quiet HEAD^..HEAD && echo "false" || echo "true")
+      echo "changed=$changed" >> $GITHUB_OUTPUT
+      echo "changed: $changed"
 
   - name: Get current ref & commit date
     if: ${{ steps.parse_action.outputs.action != 'none' }}
@@ -136,8 +138,13 @@ runs:
     working-directory: ../preview_${{ github.sha }}
     # outputs: sha, date
     run: |
-      echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-      echo "date=$(git show -s --format=%ci HEAD)" >> $GITHUB_OUTPUT
+      sha=$(git rev-parse HEAD)
+      echo "sha=$sha" >> $GITHUB_OUTPUT
+      echo "sha: $sha"
+
+      date=$(git show -s --format=%ci HEAD)
+      echo "date=$date" >> $GITHUB_OUTPUT
+      echo "date: $date"
 
   - name: Parse preview repo owner and name
     if: ${{ steps.parse_action.outputs.action != 'none' }}
@@ -145,8 +152,13 @@ runs:
     shell: bash
     # outputs: owner, name
     run: |
-      echo "owner=$(cut -d "/" -f 1 <<<"${{ inputs.preview_repo }}")" >> $GITHUB_OUTPUT
-      echo "name=$(cut -d "/" -f 2 <<<"${{ inputs.preview_repo }}")" >> $GITHUB_OUTPUT
+      owner=$(cut -d "/" -f 1 <<<"${{ inputs.preview_repo }}")
+      echo "owner=$owner" >> $GITHUB_OUTPUT
+      echo "owner: $owner"
+
+      name=$(cut -d "/" -f 2 <<<"${{ inputs.preview_repo }}")
+      echo "name=$name" >> $GITHUB_OUTPUT
+      echo "name: $name"
 
   - name: Trigger deployment in the preview repo
     uses: convictional/trigger-workflow-and-wait@v1.6.5
@@ -207,13 +219,15 @@ runs:
   - name: Determine whether to comment on PR
     id: pr_comment
     shell: bash
-    run: >-
-      echo "result=${{
+    run: |
+      result=${{
         inputs.pr_comment == 'true' && 
         startsWith(github.event_name, 'pull_request') && 
         steps.parse_action.outputs.action != 'none' && 
         steps.dispatch.outputs.conclusion == 'success' 
-      }}" >> $GITHUB_OUTPUT
+      }}
+      echo "result=$result" >> $GITHUB_OUTPUT
+      echo "result: $result"
 
   - name: Parse source repo owner and name
     if: ${{ steps.pr_comment.outputs.result == 'true' }}
@@ -221,8 +235,13 @@ runs:
     shell: bash
     # outputs: owner, name
     run: |
-      echo "owner=$(cut -d "/" -f 1 <<<"${{ github.repository }}")" >> $GITHUB_OUTPUT
-      echo "name=$(cut -d "/" -f 2 <<<"${{ github.repository }}")" >> $GITHUB_OUTPUT
+      owner=$(cut -d "/" -f 1 <<<"${{ github.repository }}")
+      echo "owner=$owner" >> $GITHUB_OUTPUT
+      echo "owner: $owner"
+
+      name=$(cut -d "/" -f 2 <<<"${{ github.repository }}")
+      echo "name=$name" >> $GITHUB_OUTPUT
+      echo "name: $name"
 
   - name: Comment on deployment
     if: ${{ steps.pr_comment.outputs.result == 'true' && steps.parse_action.outputs.action == 'deploy' }}
