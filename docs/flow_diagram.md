@@ -8,6 +8,7 @@ flowchart TD
       t2[Pull request opened]
       t3[Pull request synced]
       t4[Pull request closed]
+      t5[Branch deleted]
     end
     trigger --> s1
 

@@ -53,6 +53,20 @@ case $event_name in
   fi
   ;;
 
+"delete")
+  echo "Event name: $event_name; OK"
+
+  echo "Ref deleted: $ref_name ($ref_type)"
+
+  if [[ $ref_type == branch ]]; then
+    action="remove"
+    path="$repo_name/branch/$ref_name"
+  else
+    action="none"
+    path=""
+  fi
+  ;;
+
 *)
   echo "::error::Event name: $event_name; NOT SUPPORTED"
   exit 1
