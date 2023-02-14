@@ -70,8 +70,8 @@ runs:
       EVENT_NAME: ${{ github.event_name }}
       EVENT_TYPE: ${{ github.event.action }}
       PR_NUMBER: ${{ github.event.number }}
-      REF_NAME: ${{ github.ref_name }} # Doesn't affect PRs
-      REF_TYPE: ${{ github.ref_type }}
+      REF: ${{ github.event.ref.ref || github.event.ref }} # event.ref.ref for delete, event.ref for push
+      REF_TYPE: ${{ github.event.ref_type || github.ref_type }} # event.ref_type for delete, ref_type for push
       REPO_NAME: ${{ github.repository }}
 
   - name: Create a new deployment

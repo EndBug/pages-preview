@@ -9,7 +9,7 @@
 event_name=$EVENT_NAME
 event_type=$EVENT_TYPE
 pr_number=$PR_NUMBER
-ref_name=$REF_NAME
+ref_name=$(cut -d "/" -f 3- <<<"$REF")
 ref_type=$REF_TYPE
 repo_name=$REPO_NAME
 
