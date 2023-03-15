@@ -81,7 +81,7 @@ runs:
     with:
       step: start
       env: ${{ inputs.deployment_env }}
-      ref: ${{ github.head_ref || github.ref }}
+      ref: ${{ github.event.pull_request.head.sha || github.head_ref || github.ref }}
       task: deploy:${{ steps.parse_action.outputs.path }}
 
   - name: Set up the preview repo
