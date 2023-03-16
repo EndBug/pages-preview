@@ -20,7 +20,8 @@ If you're interested in the logic behind this action, you can check out the [flo
 
 #### Using my template
 
-1. Go to [this template](https://github.com/EndBug/preview-template) and generate your repo from there: click "Use this template", fill in name and description, check that "Include all branches" is ticked, and create the repo.
+1. Go to [this template](https://github.com/EndBug/preview-template) and generate your repo from there: click "Use this template", fill in name and description, check that "Include all branches" is ticked, and create the repo.  
+  It doesn't matter whether you create it as public or private, but remember that the Pages website will always be public.
 
 2. Go into your repo settings, in the Pages tab (Repo settings > Pages) and set "GitHub Actions" as the source.
 
