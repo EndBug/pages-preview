@@ -31,10 +31,6 @@ jobs:
       PAGES_BASE: https://octocat.github.io/preview
 
     steps:
-      - name: Checkout branch
-        if: ${{ !startsWith(github.event_name, 'pull_request') }}
-        uses: actions/checkout@v3
-
       - name: Checkout PR head
         if: ${{ startsWith(github.event_name, 'pull_request') && github.event.action != 'closed' }}
         uses: actions/checkout@v3
