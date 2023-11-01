@@ -48,7 +48,9 @@ There are currently two types of PATs: fine-grained, which are more secure but s
 
 #### Fine-grained PAT
 
-1. Go to [Account settings > Developer settings > Fine-grained tokens](https://github.com/settings/tokens?type=beta).
+1. Go to the _Personal Access Tokens_ section, of either:
+   * your personal [Account settings > Developer settings > Fine-grained tokens](https://github.com/settings/tokens?type=beta).
+   * a GitHub organization's `/settings/personal-access-tokens-onboarding`
 2. Click on "Generate new token".
 3. Give it a recognizable name and set an appropriate expiration date.
 4. Make sure that the "Resource owner" is the same user/org that owns the preview repo.
