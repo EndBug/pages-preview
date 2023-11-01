@@ -5,11 +5,8 @@
 # You should also create a PREVIEW_TOKEN secret following the action's README.
 # -------------------------------------------------------------------------------------------------
 
-name: Deploy
+name: Preview
 on:
-  push:
-    branches:
-      - 'main'
   delete:
   pull_request_target:
     types:
