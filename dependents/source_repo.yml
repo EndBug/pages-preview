@@ -26,6 +26,12 @@ jobs:
   dev:
     name: Development
     runs-on: ubuntu-20.04
+
+    # Sets permissions of the GITHUB_TOKEN to allow post comment with Preview URL
+    permissions:
+      issues: write
+      pull-requests: write
+
     env:
       PREVIEW_REPO: octocat/preview
       PAGES_BASE: https://octocat.github.io/preview
