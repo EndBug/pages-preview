@@ -1,0 +1,25 @@
+{
+  "projectName": "pages-preview",
+  "projectOwner": "EndBug",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": true,
+  "commitConvention": "angular",
+  "contributors": [
+    {
+      "login": "EndBug",
+      "name": "Federico Grandi",
+      "avatar_url": "https://avatars.githubusercontent.com/u/26386270?v=4",
+      "profile": "https://github.com/EndBug",
+      "contributions": [
+        "code"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "linkToUsage": true
+}
