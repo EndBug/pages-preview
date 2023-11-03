@@ -25,7 +25,7 @@ concurrency:
 jobs:
   dev:
     name: Development
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
       PREVIEW_REPO: octocat/preview
       PAGES_BASE: https://octocat.github.io/preview
