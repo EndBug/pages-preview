@@ -65,10 +65,10 @@ jobs:
             full="${{ env.PAGES_BASE }}/${{ github.repository }}/branch/${{ github.ref_name }}"
           fi
 
-          relative=/$(echo $full | cut -d/ -f4-)
+          relative=/$(echo "$full" | cut -d/ -f4-)
 
-          echo "full=$full" >> $GITHUB_OUTPUT
-          echo "relative=$relative" >> $GITHUB_OUTPUT
+          echo "full=$full" >> "$GITHUB_OUTPUT"
+          echo "relative=$relative" >> "$GITHUB_OUTPUT"
         shell: bash
 
       # Run your usual build command, but make sure to use the correct base URL
