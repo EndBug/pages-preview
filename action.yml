@@ -97,7 +97,7 @@ runs:
       echo "GIT_COMMITTER_EMAIL=${{ inputs.git_committer_email || inputs.git_author_email }}" >> $GITHUB_ENV
       git checkout ${{ inputs.preview_branch }}
     
-  - name: Copy the build directory to the destination and commit the changes (safe)
+  - name: Copy the build directory to the destination and commit the changes
     if: ${{ steps.parse_action.outputs.action == 'deploy' }}
     shell: bash
     working-directory: ../preview_${{ github.sha }}
