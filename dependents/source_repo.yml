@@ -33,17 +33,17 @@ jobs:
     steps:
       - name: Checkout branch
         if: ${{ !startsWith(github.event_name, 'pull_request') }}
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Checkout PR head
         if: ${{ startsWith(github.event_name, 'pull_request') && github.event.action != 'closed' }}
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
       # Assuming you're using Node.js
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         if: ${{ github.event.action != 'closed' }} # Skipping these steps if the PR has been closed
         with:
           node-version: '16'
