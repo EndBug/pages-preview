@@ -1,0 +1,198 @@
+# -------------------------------------------------------------------------------------------------
+# This workflow is meant to be copied to the source repo, in order to cleanup old previews.
+# Remember to edit the placeholder commands and env variables below to best suit your needs.
+# You should also create a PREVIEW_TOKEN secret following the action's README.
+# -------------------------------------------------------------------------------------------------
+
+name: Cleanup old previews
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run in dry-run mode, without actually deleting anything'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  dev:
+    name: Development
+    runs-on: ubuntu-latest
+    env:
+      PREVIEW_REPO: octocat/preview
+      PREVIEW_BRANCH: gh-pages
+      PREVIEW_TOKEN: ${{ secrets.PREVIEW_TOKEN }}
+
+      # Change optional
+      GIT_AUTHOR_NAME: ${{ github.actor }}
+      GIT_AUTHOR_EMAIL: ${{ github.actor }}@users.noreply.github.com
+      GIT_COMMITTER_NAME: ${{ github.actor }}
+      GIT_COMMITTER_EMAIL: ${{ github.actor }}@users.noreply.github.com
+
+    steps:
+      - name: Set up the preview repo
+        shell: bash
+        run: |
+          cd ${{ github.workspace }}/..
+          git clone "https://git:${{ env.PREVIEW_TOKEN }}@github.com/${{ env.PREVIEW_REPO }}.git" preview_cleanup
+          cd preview_cleanup
+          git config --global user.name ${{ env.GIT_AUTHOR_NAME }}
+          git config --global user.email ${{ env.GIT_AUTHOR_EMAIL }}
+          git checkout ${{ env.PREVIEW_BRANCH }}
+
+      - name: Check if preview branches still exist
+        shell: bash
+        run: |
+          cd ${{ github.workspace }}
+          echo ">>> Checking if preview branches still exist..."
+
+          # Path to the branch directories
+          BRANCH_DIR="${{ github.workspace }}/../preview_cleanup/${{ github.repository }}/branch"
+
+          if [ -d "$BRANCH_DIR" ]; then
+            echo ">>> Found branch directory: $BRANCH_DIR"
+            
+            # Get all subdirectories (branch names)
+            for branch_dir in "$BRANCH_DIR"/*/; do
+              if [ -d "$branch_dir" ]; then
+                branch_name=$(basename "$branch_dir")
+                echo ">>> Checking branch: $branch_name"
+                
+                # Check if branch exists in current repo
+                if git ls-remote --heads origin "$branch_name" | grep -q "$branch_name"; then
+                  echo ">>> Branch '$branch_name' still exists - keeping preview"
+                else
+                  echo ">>> Branch '$branch_name' no longer exists - removing preview folder"
+                  # Remove the branch directory from git
+                  cd "${{ github.workspace }}/../preview_cleanup"
+                  git rm -rf "${{ github.repository }}/branch/$branch_name"
+                  echo ">>> Removed preview folder for branch: $branch_name"
+                fi
+              fi
+            done
+          else
+            echo ">>> No branch directory found at: $BRANCH_DIR"
+          fi
+
+      - name: Check if preview PRs still exist
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd ${{ github.workspace }}
+          echo ">>> Checking if preview PRs still exist..."
+
+          # Path to the PR directories
+          PR_DIR="${{ github.workspace }}/../preview_cleanup/${{ github.repository }}/pr"
+
+          if [ -d "$PR_DIR" ]; then
+            echo ">>> Found PR directory: $PR_DIR"
+            
+            # Get all subdirectories (PR numbers)
+            for pr_dir in "$PR_DIR"/*/; do
+              if [ -d "$pr_dir" ]; then
+                pr_number=$(basename "$pr_dir")
+                echo ">>> Checking PR: $pr_number"
+                
+                # Check if PR exists and is still open using GitHub CLI
+                pr_info=$(gh pr view "$pr_number" --repo "${{ github.repository }}" --json number,state 2>/dev/null || echo "")
+                if [ -n "$pr_info" ]; then
+                  pr_state=$(echo "$pr_info" | jq -r '.state')
+                  if [ "$pr_state" = "OPEN" ]; then
+                    echo ">>> PR #$pr_number is still open - keeping preview"
+                  else
+                    echo ">>> PR #$pr_number is $pr_state (closed/merged) - removing preview folder"
+                    # Remove the PR directory from git
+                    cd "${{ github.workspace }}/../preview_cleanup"
+                    git rm -rf "${{ github.repository }}/pr/$pr_number" >/dev/null 2>&1
+                    echo ">>> Removed preview folder for PR: $pr_number"
+                  fi
+                else
+                  echo ">>> PR #$pr_number no longer exists - removing preview folder"
+                  # Remove the PR directory from git
+                  cd "${{ github.workspace }}/../preview_cleanup"
+                  git rm -rf "${{ github.repository }}/pr/$pr_number" >/dev/null 2>&1
+                  echo ">>> Removed preview folder for PR: $pr_number"
+                fi
+              fi
+            done
+          else
+            echo ">>> No PR directory found at: $PR_DIR"
+          fi
+
+      - name: Show what would be deleted (dry-run)
+        if: ${{ inputs.dry_run == true }}
+        shell: bash
+        working-directory: ../preview_cleanup
+        run: |
+          echo ">>> DRY RUN MODE - Showing what would be deleted:"
+
+          # Get deleted files and extract unique PR numbers
+          deleted_files=$(git status --porcelain | grep "^D" || echo "")
+
+          if [ -n "$deleted_files" ]; then
+            echo ">>> Files to be deleted:"
+            # Use a temporary array to collect all items, then sort and deduplicate
+            declare -a items=()
+            while read -r line; do
+              # Extract PR number from path like "D  octocat/preview/pr/3358/..."
+              if [[ $line =~ /pr/([0-9]+)/ ]]; then
+                pr_number="${BASH_REMATCH[1]}"
+                items+=(">>> PR #$pr_number")
+              elif [[ $line =~ /branch/([^/]+)/ ]]; then
+                branch_name="${BASH_REMATCH[1]}"
+                items+=(">>> Branch: $branch_name")
+              else
+                # For other files, show just the filename
+                filename=$(echo "$line" | sed 's/^D  //' | sed 's/.*\///')
+                items+=(">>> File: $filename")
+              fi
+            done <<< "$deleted_files"
+            
+            # Sort and deduplicate the items
+            printf '%s\n' "${items[@]}" | sort -u
+          else
+            echo ">>> No files staged for deletion"
+          fi
+
+          echo ">>> Use dry_run: false to actually commit and push these changes"
+
+      - name: Commit and push cleanup changes
+        if: ${{ inputs.dry_run == false }}
+        shell: bash
+        working-directory: ../preview_cleanup
+        run: |
+          set -e
+
+          # Check if there are any changes to commit
+          if git diff --staged --quiet; then
+            echo ">>> No changes to commit"
+            exit 0
+          fi
+
+          echo ">>> Committing cleanup changes..."
+          git commit --message="chore: cleanup old preview directories
+
+          Removed preview directories for branches and PRs that no longer exist.
+          Commit created with [EndBug/pages-preview](https://github.com/EndBug/pages-preview)" --allow-empty
+
+          # Retry loop for safe push (same logic as action.yml)
+          max_attempts=5
+          attempt=1
+
+          while [ $attempt -le $max_attempts ]; do
+            echo "🔄 Attempt $attempt to push changes..."
+            git pull --rebase origin ${{ env.PREVIEW_BRANCH }} || exit 1
+            if git push origin ${{ env.PREVIEW_BRANCH }}; then
+              echo "✅ Push successful"
+              break
+            fi
+            attempt=$(( attempt + 1 ))
+            echo "⚠️ Push failed due to concurrent changes, retrying in 3s..."
+            sleep 3
+          done
+
+          if [ $attempt -gt $max_attempts ]; then
+            echo "❌ Failed to push after $max_attempts attempts"
+            exit 1
+          fi
