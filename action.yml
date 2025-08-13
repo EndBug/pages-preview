@@ -146,7 +146,27 @@ runs:
       git commit --message="ci: remove preview for ${{ steps.parse_action.outputs.path }}
       
       Commit created with [EndBug/pages-preview](https://github.com/EndBug/pages-preview)" --allow-empty
-      git push origin ${{ inputs.preview_branch }}
+
+      # Retry loop for safe push
+      max_attempts=5
+      attempt=1
+
+      while [ $attempt -le $max_attempts ]; do
+        echo "🔄 Attempt $attempt to push changes..."
+        git pull --rebase origin ${{ inputs.preview_branch }} || exit 1
+        if git push origin ${{ inputs.preview_branch }}; then
+          echo "✅ Push successful"
+          break
+        fi
+        attempt=$(( attempt + 1 ))
+        echo "⚠️ Push failed due to concurrent changes, retrying in 3s..."
+        sleep 3
+      done
+
+      if [ $attempt -gt $max_attempts ]; then
+        echo "❌ Failed to push after $max_attempts attempts"
+        exit 1
+      fi
 
   - name: Check whether there has been any change in the preview repo
     if: ${{ steps.parse_action.outputs.action != 'none' }}
