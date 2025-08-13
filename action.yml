@@ -77,7 +77,7 @@ runs:
   - name: Create a new deployment
     if: ${{ steps.parse_action.outputs.action == 'deploy' && inputs.deployments == 'true' }}
     id: deployment
-    uses: EndBug/deployments@140-task
+    uses: bobheadxi/deployments@88ce5600046c82542f8246ac287d0a53c461bca3 # v1.4.0
     with:
       step: start
       env: ${{ inputs.deployment_env }}
@@ -227,7 +227,7 @@ runs:
 
   - name: Set deployment status
     if: ${{ always() && steps.parse_action.outputs.action == 'deploy' && inputs.deployments == 'true' }}
-    uses: EndBug/deployments@140-task
+    uses: bobheadxi/deployments@88ce5600046c82542f8246ac287d0a53c461bca3 # v1.4.0
     with:
       step: finish
       status: ${{ job.status }}
