@@ -239,7 +239,7 @@ runs:
 
   - name: Deactivate previous deployments
     if: ${{ success() && inputs.deployments == 'true' }}
-    uses: actions/github-script@v7
+    uses: actions/github-script@v8
     with:
       result-encoding: string
       script: |
