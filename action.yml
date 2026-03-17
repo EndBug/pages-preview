@@ -292,7 +292,7 @@ runs:
 
   - name: Comment on deployment
     if: ${{ steps.pr_comment.outputs.result == 'true' && steps.parse_action.outputs.action == 'deploy' }}
-    uses: marocchino/sticky-pull-request-comment@v2
+    uses: marocchino/sticky-pull-request-comment@v3
     with:
       repo: ${{ steps.parse_source_repo.outputs.name }}
       message: |-
@@ -304,7 +304,7 @@ runs:
       
   - name: Comment on removal
     if: ${{ steps.pr_comment.outputs.result == 'true' && steps.parse_action.outputs.action == 'remove' }}
-    uses: marocchino/sticky-pull-request-comment@v2
+    uses: marocchino/sticky-pull-request-comment@v3
     with:
       repo: ${{ steps.parse_source_repo.outputs.name }}
       message: |-
