@@ -58,7 +58,7 @@ inputs:
     default: preview.yml
     required: false
   action:
-    description: Whether to deploy or remove the preview. Defaults from the event payload; required on events that do not define deploy or remove (e.g. workflow_dispatch) when pr_number or ref is provided.
+    description: Whether to deploy or remove the preview. Defaults from the event payload; required on events that do not define deploy or remove (e.g. workflow_run, workflow_dispatch) when pr_number or ref is provided.
     required: false
   pr_number:
     description: Pull request number for the preview path (repo/pr/N). Defaults from the event payload; overrides the event when set.

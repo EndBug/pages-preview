@@ -72,15 +72,25 @@ This steps need to be repeated for each repo you want to use this action on.
 1. Go to the repo that contains the source code of your website.
 2. Go to Repo settings > Secrets and variables > Actions.
 3. Create a new repository secret called `PREVIEW_TOKEN` and paste the PAT you created in the previous step.
-4. Go back to the repo contents and add the deployment workflow: you can either create a new one or add the same steps to your existing one. Use the [`dependents/source-repo.yml`](dependents/source_repo.yml) file as a template/example.  
-  Make sure to change the `PREVIEW_REPO` and `PAGES_BASE` env variable, along with the commands needed to build your website.  
+4. Add **two** workflows to the source repo, using the templates as a starting point:
+   - [`dependents/source_repo_build.yml`](dependents/source_repo_build.yml) — checks out the PR/branch, builds the site, and uploads the result as an artifact. This workflow has **no secrets**.
+   - [`dependents/source_repo_deploy.yml`](dependents/source_repo_deploy.yml) — downloads that artifact and runs this action with `PREVIEW_TOKEN`. It also removes previews when a PR is closed or a branch is deleted.
+
+  The `name:` of the build workflow must match the `workflows:` list in the deploy workflow (`Build preview` in the templates).  
+  Make sure to change the `PREVIEW_REPO` and `PAGES_BASE` env variables, along with the commands needed to build your website.  
   Also, make sure to change `EndBug/pages-preview`'s inputs to match your needs: more info on that in the ["Inputs"](#inputs) section of this file.
+
+  Never checkout or build pull request code in a workflow that has `PREVIEW_TOKEN`. A fork PR can change install/build scripts and steal that secret. Use `pull_request` (no secrets) for the build, and only give secrets to a follow-up `workflow_run` job that consumes the artifact. Do not dispatch the deploy workflow from the build job: fork PRs have no token that can start a privileged workflow, and any secret you added there could be stolen.
+
+  `workflow_run` does not carry pull_request/push context the action can infer from, so the build template uploads a small `preview-meta` sidecar (PR number or branch name) next to the site artifact. That metadata is a hint only — the PR author controls the build workflow — and must never include secrets. The deploy template verifies it against `workflow_run.head_sha` / `head_branch` before passing `action` and `pr_number` or `ref` to this action.
+
+  You can pin the action to a commit SHA instead of `@v1` if you want to lock the exact revision.
 
 All done! You're now ready to use the action 🎉
 
 ### Manual deploy or remove
 
-You can run the action from `workflow_dispatch` (or any other event) by passing the optional `action`, `pr_number`, `ref`, and `ref_type` inputs. Omitted values fall back to the GitHub event payload, so existing workflows behave the same.
+The deploy template includes a `workflow_dispatch` job. You can also run the action from `workflow_dispatch` (or any other event) by passing the optional `action`, `pr_number`, `ref`, and `ref_type` inputs. Omitted values fall back to the GitHub event payload, so existing workflows behave the same.
 
 Typical use case: remove a leftover PR preview after a failed cleanup run:
 
@@ -163,8 +173,8 @@ on:
     preview_workflow_file_name: custom_workflow.yml
 
     # --- MANUAL OVERRIDES (optional) ---
-    # Override deploy/remove; defaults from the event payload. Required on workflow_dispatch
-    # when pr_number or ref is set.
+    # Override deploy/remove; defaults from the event payload. Required on workflow_run
+    # and on workflow_dispatch when pr_number or ref is set.
     action: remove
 
     # PR number for repo/pr/N previews; defaults from github.event.number

@@ -10,22 +10,24 @@ flowchart TD
       t4[Pull request closed]
       t5[Branch deleted]
     end
-    trigger --> s1
 
-    subgraph source [Source repo workflow]
-      s1[Source repo workflow triggered] --> s2{Is the\nevent a pull\nrequest?}
+    subgraph buildWf [Build preview workflow]
+      b1[Unprivileged workflow triggered] --> b2{Is the\nevent a pull\nrequest?}
+      b2 -- Yes --> b3
+      b2 -- No --> b4
+      b3[".../pr/:number"] --> b5
+      b4[".../branch/:name"] --> b5
+      b5[Build static website\nusing this base URL] --> b6[Upload site and preview-meta artifacts]
+    end
 
-      s2 -- Yes --> s3
-      s2 -- No --> s4
-      
-      s3[.../pr/:number] --> s5
-      s4[.../branch/:name] --> s5
-
-      s5[Build static website\nusing this base URL] --> s6
-      s6[Run EndBug/pages-preview action]
+    subgraph deployWf [Deploy preview workflow]
+      d1[Privileged workflow triggered] --> d2{What happened?}
+      d2 -->|"workflow_run success"| d3[Download site artifact]
+      d3 --> s6[Run EndBug/pages-preview action]
+      d2 -->|"PR closed or branch deleted"| s6
 
       subgraph action [EndBug/pages-preview]
-        a1[Action run triggered] --> 
+        a1[Action run triggered] -->
 
         a2{What should\nthe action do?}
         a2 -- Deploy --> a30
@@ -57,7 +59,7 @@ flowchart TD
 
         aRet[Return action status]
       end
-    
+
       sRet[Return workflow status]
     end
 
@@ -65,15 +67,21 @@ flowchart TD
     D0[New pending deployment created]
     D1[Deployment status updated]
     D2[Previous deployments deactivated]
-
-    s6 --> a1
-    aRet --> sRet
-    a11 -.-> PR
-    a10 -.-> PR
-    a30 -.-> D0
-    a80 -.-> D1
-    a81 -.-> D2
   end
+
+  t1 --> b1
+  t2 --> b1
+  t3 --> b1
+  t4 --> d1
+  t5 --> d1
+  b6 --> d1
+  s6 --> a1
+  aRet --> sRet
+  a11 -.-> PR
+  a10 -.-> PR
+  a30 -.-> D0
+  a80 -.-> D1
+  a81 -.-> D2
 
   subgraph previewRepo [Preview repo]
     p0[Content updated via\ncommit push]
