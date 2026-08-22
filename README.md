@@ -78,6 +78,36 @@ This steps need to be repeated for each repo you want to use this action on.
 
 All done! You're now ready to use the action 🎉
 
+### Manual deploy or remove
+
+You can run the action from `workflow_dispatch` (or any other event) by passing the optional `action`, `pr_number`, `ref`, and `ref_type` inputs. Omitted values fall back to the GitHub event payload, so existing workflows behave the same.
+
+Typical use case: remove a leftover PR preview after a failed cleanup run:
+
+```yaml
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: deploy or remove
+        required: true
+        type: choice
+        options: [deploy, remove]
+      pr_number:
+        description: PR number (for PR previews)
+        required: false
+        type: string
+
+- uses: EndBug/pages-preview@v1
+  with:
+    build_dir: build
+    preview_base_url: ${{ env.PAGES_BASE }}
+    preview_repo: ${{ env.PREVIEW_REPO }}
+    preview_token: ${{ secrets.PREVIEW_TOKEN }}
+    action: ${{ inputs.action }}
+    pr_number: ${{ inputs.pr_number }}
+```
+
 ## Inputs
 
 ```yaml
@@ -131,6 +161,20 @@ All done! You're now ready to use the action 🎉
     # The name of the workflow file that contains the comment workflow in the preview repo
     # Default: preview.yml
     preview_workflow_file_name: custom_workflow.yml
+
+    # --- MANUAL OVERRIDES (optional) ---
+    # Override deploy/remove; defaults from the event payload. Required on workflow_dispatch
+    # when pr_number or ref is set.
+    action: remove
+
+    # PR number for repo/pr/N previews; defaults from github.event.number
+    pr_number: '12'
+
+    # Branch name or git ref for repo/branch/name previews; defaults from the push/delete payload
+    ref: my-feature-branch
+
+    # branch or tag; defaults from the event payload. Tags are ignored (action none).
+    ref_type: branch
 ```
 
 ## Contributors ✨

@@ -57,6 +57,18 @@ inputs:
     description: The name of the workflow file that contains the comment workflow in the preview repo. If you use my template, the name is already 'preview.yml'
     default: preview.yml
     required: false
+  action:
+    description: Whether to deploy or remove the preview. Defaults from the event payload; required on events that do not define deploy or remove (e.g. workflow_dispatch) when pr_number or ref is provided.
+    required: false
+  pr_number:
+    description: Pull request number for the preview path (repo/pr/N). Defaults from the event payload; overrides the event when set.
+    required: false
+  ref:
+    description: Git ref or branch name for the preview path (repo/branch/name). Defaults from the event payload on push/delete; overrides the event when set.
+    required: false
+  ref_type:
+    description: Whether ref is a branch or tag. Defaults from the event payload; if ref is provided without ref_type, branch is assumed. Tags are ignored (action none), same as today.
+    required: false
 
 runs:
   using: composite
@@ -65,13 +77,17 @@ runs:
     run: ${{ github.action_path }}/lib/parse_action.sh
     shell: bash
     id: parse_action
-    # outputs: action, path
+    # outputs: action, path, pr_number
     env:
       EVENT_NAME: ${{ github.event_name }}
       EVENT_TYPE: ${{ github.event.action }}
-      PR_NUMBER: ${{ github.event.number }}
-      REF: ${{ github.event.ref.ref || github.event.ref }} # event.ref.ref for delete, event.ref for push
-      REF_TYPE: ${{ github.event.ref_type || github.ref_type }} # event.ref_type for delete, ref_type for push
+      EVENT_PR_NUMBER: ${{ github.event.number }}
+      EVENT_REF: ${{ github.event.ref.ref || github.event.ref }} # event.ref.ref for delete, event.ref for push
+      EVENT_REF_TYPE: ${{ github.event.ref_type || github.ref_type }} # event.ref_type for delete, ref_type for push
+      INPUT_ACTION: ${{ inputs.action }}
+      INPUT_PR_NUMBER: ${{ inputs.pr_number }}
+      INPUT_REF: ${{ inputs.ref }}
+      INPUT_REF_TYPE: ${{ inputs.ref_type }}
       REPO_NAME: ${{ github.repository }}
 
   - name: Create a new deployment
@@ -269,7 +285,7 @@ runs:
     run: |
       result=${{
         inputs.pr_comment == 'true' && 
-        startsWith(github.event_name, 'pull_request') && 
+        steps.parse_action.outputs.pr_number != '' && 
         steps.parse_action.outputs.action != 'none' && 
         steps.dispatch.outputs.conclusion == 'success' 
       }}
@@ -300,7 +316,7 @@ runs:
         :---:
         :rocket: Deployed preview to ${{ inputs.preview_base_url }}/${{ steps.parse_action.outputs.path }}
         on branch [`${{ inputs.preview_branch }}`](${{ github.server_url }}/${{ inputs.preview_repo }}/tree/${{ inputs.preview_branch }}) at ${{ steps.current_ref.outputs.date }}
-      number: ${{ github.event.number }}
+      number: ${{ steps.parse_action.outputs.pr_number }}
       
   - name: Comment on removal
     if: ${{ steps.pr_comment.outputs.result == 'true' && steps.parse_action.outputs.action == 'remove' }}
@@ -312,4 +328,4 @@ runs:
         :---:
         Preview removed because the pull request was closed.
         ${{ steps.current_ref.outputs.date }}
-      number: ${{ github.event.number }}
+      number: ${{ steps.parse_action.outputs.pr_number }}
