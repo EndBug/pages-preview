@@ -239,7 +239,29 @@ runs:
           "ref": "${{ steps.current_ref.outputs.sha }}",
           "version": "v1"
         }
-      propagate_failure: true
+      # Cancelled runs are handled by the wait step: a newer Pages deploy of
+      # the whole site still includes this preview.
+      propagate_failure: false
+
+  - name: Wait for preview deployment
+    if: ${{ always() && steps.parse_action.outputs.action != 'none' && inputs.deployments == 'true' && steps.check_changes.outputs.changed == 'true' }}
+    id: wait_deploy
+    shell: bash
+    working-directory: ../preview_${{ github.sha }}
+    env:
+      GH_TOKEN: ${{ inputs.preview_token }}
+      GH_REPO_OWNER: ${{ steps.parse_preview_repo.outputs.owner }}
+      GH_REPO_NAME: ${{ steps.parse_preview_repo.outputs.name }}
+      WORKFLOW_FILE: ${{ inputs.preview_workflow_file_name }}
+      OUR_RUN_ID: ${{ steps.dispatch.outputs.workflow_id }}
+      OUR_CONCLUSION: ${{ steps.dispatch.outputs.conclusion }}
+      OUR_SHA: ${{ steps.current_ref.outputs.sha }}
+      OUR_PATH: ${{ steps.parse_action.outputs.path }}
+      PREVIEW_ACTION: ${{ steps.parse_action.outputs.action }}
+      PREVIEW_BRANCH: ${{ inputs.preview_branch }}
+      WAIT_INTERVAL: 10
+      TIMEOUT_SECONDS: 1200
+    run: ${{ github.action_path }}/lib/wait_for_preview_deploy.sh
 
   - name: Set deployment status
     if: ${{ always() && steps.parse_action.outputs.action == 'deploy' && inputs.deployments == 'true' }}
@@ -287,7 +309,7 @@ runs:
         inputs.pr_comment == 'true' && 
         steps.parse_action.outputs.pr_number != '' && 
         steps.parse_action.outputs.action != 'none' && 
-        steps.dispatch.outputs.conclusion == 'success' 
+        steps.wait_deploy.outputs.conclusion == 'success' 
       }}
       echo "result=$result" >> $GITHUB_OUTPUT
       echo "result: $result"

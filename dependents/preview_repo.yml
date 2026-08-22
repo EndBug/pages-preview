@@ -23,6 +23,8 @@ permissions:
   pages: write
   id-token: write
 
+# Pages only allows one deploy at a time. Pending runs in this group are still
+# replaced by newer ones; EndBug/pages-preview waits for that successor deploy.
 concurrency:
   group: "pages"
   cancel-in-progress: false
