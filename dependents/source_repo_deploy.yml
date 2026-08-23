@@ -150,6 +150,7 @@ jobs:
           pr_number: ${{ steps.target.outputs.pr_number }}
           ref: ${{ steps.target.outputs.ref }}
           ref_type: ${{ steps.target.outputs.ref_type }}
+          deployment_ref: ${{ github.event.workflow_run.head_sha }}
 
   cleanup:
     name: Cleanup preview
@@ -186,40 +187,42 @@ jobs:
       IS_PR_PREVIEW: ${{ inputs.pr_number != '' }}
 
     steps:
+      # This job has PREVIEW_TOKEN, so it must not checkout or build PR code.
+      # Re-run the unprivileged "Build preview" workflow to deploy a PR.
+      - name: Reject privileged PR builds
+        if: ${{ env.IS_REMOVE != 'true' && env.IS_PR_PREVIEW == 'true' }}
+        run: |
+          echo "::error::Manual PR deploys are not supported in this privileged workflow. Re-run the Build preview workflow instead."
+          exit 1
+
       - name: Checkout branch
-        if: ${{ !IS_REMOVE && !IS_PR_PREVIEW }}
+        if: ${{ env.IS_REMOVE != 'true' && env.IS_PR_PREVIEW != 'true' }}
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
 
-      - name: Checkout PR
-        if: ${{ !IS_REMOVE && IS_PR_PREVIEW }}
-        uses: actions/checkout@v4
-        with:
-          ref: refs/pull/${{ inputs.pr_number }}/merge
+      - name: Record deployment ref
+        if: ${{ env.IS_REMOVE != 'true' && env.IS_PR_PREVIEW != 'true' }}
+        id: checkout_sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       # Assuming you're using Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
-        if: ${{ !IS_REMOVE }}
+        if: ${{ env.IS_REMOVE != 'true' && env.IS_PR_PREVIEW != 'true' }}
         with:
           node-version: '16'
           cache: npm
 
       - name: Install dependencies
-        if: ${{ !IS_REMOVE }}
+        if: ${{ env.IS_REMOVE != 'true' && env.IS_PR_PREVIEW != 'true' }}
         run: npm ci --ignore-scripts
 
       - name: Determine base URL
-        if: ${{ !IS_REMOVE }}
+        if: ${{ env.IS_REMOVE != 'true' && env.IS_PR_PREVIEW != 'true' }}
         id: baseurl
         run: |
-          if [ -n "${{ inputs.pr_number }}" ]; then
-            full="${{ env.PAGES_BASE }}/${{ github.repository }}/pr/${{ inputs.pr_number }}"
-          else
-            full="${{ env.PAGES_BASE }}/${{ github.repository }}/branch/${{ inputs.ref }}"
-          fi
-
+          full="${{ env.PAGES_BASE }}/${{ github.repository }}/branch/${{ inputs.ref }}"
           relative=/$(echo "$full" | cut -d/ -f4-)
 
           echo "full=$full" >> "$GITHUB_OUTPUT"
@@ -229,7 +232,7 @@ jobs:
       # Run your usual build command, but make sure to use the correct base URL
       # This example assumes you're using React, and that you're using the PUBLIC_URL env variable
       - name: Build
-        if: ${{ !IS_REMOVE }}
+        if: ${{ env.IS_REMOVE != 'true' && env.IS_PR_PREVIEW != 'true' }}
         run: npm run build
         env:
           PUBLIC_URL: ${{ steps.baseurl.outputs.relative }}
@@ -244,3 +247,4 @@ jobs:
           pr_number: ${{ inputs.pr_number }}
           ref: ${{ inputs.ref }}
           ref_type: ${{ inputs.ref_type }}
+          deployment_ref: ${{ steps.checkout_sha.outputs.sha }}

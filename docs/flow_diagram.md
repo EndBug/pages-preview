@@ -23,7 +23,9 @@ flowchart TD
     subgraph deployWf [Deploy preview workflow]
       d1[Privileged workflow triggered] --> d2{What happened?}
       d2 -->|"workflow_run success"| d3[Download site artifact]
-      d3 --> s6[Run EndBug/pages-preview action]
+      d3 --> d4[Download preview-meta artifact]
+      d4 --> d5[Validate preview-meta against workflow-run identity]
+      d5 --> s6[Run EndBug/pages-preview action]
       d2 -->|"PR closed or branch deleted"| s6
 
       subgraph action [EndBug/pages-preview]

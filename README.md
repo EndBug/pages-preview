@@ -92,6 +92,8 @@ All done! You're now ready to use the action 🎉
 
 The deploy template includes a `workflow_dispatch` job. You can also run the action from `workflow_dispatch` (or any other event) by passing the optional `action`, `pr_number`, `ref`, and `ref_type` inputs. Omitted values fall back to the GitHub event payload, so existing workflows behave the same.
 
+Manual **deploys** in that privileged job are limited to trusted branch refs. To deploy a PR preview, re-run the unprivileged build workflow instead of checking out PR code next to `PREVIEW_TOKEN`. Manual **removes** still accept `pr_number`.
+
 Typical use case: remove a leftover PR preview after a failed cleanup run:
 
 ```yaml
@@ -185,6 +187,11 @@ on:
 
     # branch or tag; defaults from the event payload. Tags are ignored (action none).
     ref_type: branch
+
+    # Git SHA recorded on the GitHub Deployment. Defaults to the pull request head
+    # SHA, then github.head_ref, then github.ref. Pass workflow_run.head_sha (or
+    # the checked-out commit) so the deployment points at the verified commit.
+    deployment_ref: abcdef1
 ```
 
 ## Contributors ✨
