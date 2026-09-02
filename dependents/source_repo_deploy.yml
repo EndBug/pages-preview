@@ -221,8 +221,14 @@ jobs:
       - name: Determine base URL
         if: ${{ env.IS_REMOVE != 'true' && env.IS_PR_PREVIEW != 'true' }}
         id: baseurl
+        env:
+          INPUT_REF: ${{ inputs.ref }}
         run: |
-          full="${{ env.PAGES_BASE }}/${{ github.repository }}/branch/${{ inputs.ref }}"
+          ref="$INPUT_REF"
+          if [[ $ref == refs/* ]]; then
+            ref=$(cut -d "/" -f 3- <<<"$ref")
+          fi
+          full="${{ env.PAGES_BASE }}/${{ github.repository }}/branch/$ref"
           relative=/$(echo "$full" | cut -d/ -f4-)
 
           echo "full=$full" >> "$GITHUB_OUTPUT"
