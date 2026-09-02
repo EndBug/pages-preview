@@ -1,0 +1,102 @@
+# -------------------------------------------------------------------------------------------------
+# Copy this file to the source repo (e.g. .github/workflows/preview-build.yml).
+# It builds the site from pull_request / push without secrets, then uploads the
+# site-build artifact plus a preview-meta sidecar (PR number or branch name).
+# Never put secrets in those artifacts. The deploy workflow verifies preview-meta
+# against workflow_run.head_sha / head_branch before running EndBug/pages-preview.
+#
+# The `name` below must match the `workflows:` list in source_repo_deploy.yml.
+# Edit the placeholder commands and env variables to match your site.
+# -------------------------------------------------------------------------------------------------
+
+name: Build preview
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+concurrency:
+  group: preview-build-${{ github.event.number || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    env:
+      PREVIEW_REPO: octocat/preview
+      PAGES_BASE: https://octocat.github.io/preview
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Assuming you're using Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '16'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      # This will calculate the base URL for the website, based on the event that triggered the workflow.
+      # Leave this step as it is, unless you know what you're doing.
+      - name: Determine base URL
+        id: baseurl
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            full="${{ env.PAGES_BASE }}/${{ github.repository }}/pr/${{ github.event.number }}"
+          else
+            full="${{ env.PAGES_BASE }}/${{ github.repository }}/branch/${{ github.ref_name }}"
+          fi
+
+          relative=/$(echo "$full" | cut -d/ -f4-)
+
+          echo "full=$full" >> "$GITHUB_OUTPUT"
+          echo "relative=$relative" >> "$GITHUB_OUTPUT"
+        shell: bash
+
+      # Run your usual build command, but make sure to use the correct base URL
+      # This example assumes you're using React, and that you're using the PUBLIC_URL env variable
+      - name: Build
+        run: npm run build
+        env:
+          PUBLIC_URL: ${{ steps.baseurl.outputs.relative }}
+
+      - name: Upload site artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-build
+          path: build # Change this to match your build output directory
+          retention-days: 1
+
+      # Sidecar metadata for the deploy workflow. Written after the build and
+      # outside the site directory so the build cannot clobber it. Treat it as a
+      # hint only: the deploy workflow verifies it against workflow_run.head_sha
+      # / head_branch. Never put secrets here.
+      - name: Write preview metadata
+        run: |
+          mkdir -p "$RUNNER_TEMP/preview-meta"
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo -n "${{ github.event.number }}" > "$RUNNER_TEMP/preview-meta/pr_number"
+          else
+            echo -n "${{ github.ref_name }}" > "$RUNNER_TEMP/preview-meta/ref"
+            echo -n "branch" > "$RUNNER_TEMP/preview-meta/ref_type"
+          fi
+
+      - name: Upload preview metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-meta
+          path: ${{ runner.temp }}/preview-meta
+          retention-days: 1

@@ -1,0 +1,256 @@
+# -------------------------------------------------------------------------------------------------
+# Copy this file to the source repo (e.g. .github/workflows/preview-deploy.yml).
+# It deploys the site-build + preview-meta artifacts from "Build preview" (secrets
+# are available here) and removes previews when a PR is closed or a branch is deleted.
+# preview-meta is verified against workflow_run.head_sha / head_branch; do not trust it alone.
+#
+# Never checkout or build pull request code in this workflow: it has PREVIEW_TOKEN.
+# pull_request_target is used only to remove a preview after the PR is closed.
+#
+# The `workflows:` list must match the `name:` of the build workflow.
+# You should also create a PREVIEW_TOKEN secret following the action's README.
+# -------------------------------------------------------------------------------------------------
+
+name: Deploy preview
+on:
+  workflow_run:
+    workflows:
+      - 'Build preview'
+    types:
+      - completed
+  delete:
+  pull_request_target:
+    types:
+      - closed
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Deploy or remove a preview
+        required: true
+        type: choice
+        options:
+          - deploy
+          - remove
+      pr_number:
+        description: PR number (for PR previews)
+        required: false
+        type: string
+      ref:
+        description: Branch name or git ref (for branch previews)
+        required: false
+        type: string
+      ref_type:
+        description: branch or tag (tags are ignored)
+        required: false
+        type: choice
+        options:
+          - branch
+          - tag
+
+concurrency:
+  group: preview-${{ github.event_name == 'workflow_run' && (github.event.workflow_run.pull_requests[0].number || github.event.workflow_run.head_branch) || github.event.number || github.ref_name || inputs.pr_number || inputs.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy from artifact
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.event == 'push') }}
+    permissions:
+      actions: read
+      contents: read
+      deployments: write
+      pull-requests: write
+    env:
+      PREVIEW_REPO: octocat/preview
+      PAGES_BASE: https://octocat.github.io/preview
+
+    steps:
+      - name: Download site artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: site-build
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: build # Change this to match build_dir below
+
+      - name: Download preview metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: preview-meta
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: ${{ runner.temp }}/preview-meta
+
+      # preview-meta is attacker-controlled (the build workflow comes from the PR).
+      # Verify it against workflow_run.head_sha / head_branch before using it.
+      - name: Verify preview target
+        id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          META_DIR: ${{ runner.temp }}/preview-meta
+          WR_EVENT: ${{ github.event.workflow_run.event }}
+          WR_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          WR_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          echo "action=deploy" >> "$GITHUB_OUTPUT"
+
+          if [ "$WR_EVENT" = "pull_request" ]; then
+            if [ ! -f "$META_DIR/pr_number" ]; then
+              echo "::error::preview-meta is missing pr_number"
+              exit 1
+            fi
+            pr=$(tr -d '[:space:]' < "$META_DIR/pr_number")
+            if [ -z "$pr" ]; then
+              echo "::error::preview-meta pr_number is empty"
+              exit 1
+            fi
+            head_oid=$(gh pr view "$pr" --repo "${{ github.repository }}" --json headRefOid --jq '.headRefOid')
+            if [ "$head_oid" != "$WR_HEAD_SHA" ]; then
+              echo "::error::preview-meta pr_number $pr head $head_oid does not match workflow_run.head_sha $WR_HEAD_SHA"
+              exit 1
+            fi
+            echo "pr_number=$pr" >> "$GITHUB_OUTPUT"
+          elif [ "$WR_EVENT" = "push" ]; then
+            if [ ! -f "$META_DIR/ref" ]; then
+              echo "::error::preview-meta is missing ref"
+              exit 1
+            fi
+            ref=$(tr -d '[:space:]' < "$META_DIR/ref")
+            if [ -z "$WR_HEAD_BRANCH" ]; then
+              echo "::error::workflow_run.push is missing head_branch"
+              exit 1
+            fi
+            if [ "$ref" != "$WR_HEAD_BRANCH" ]; then
+              echo "::error::preview-meta ref $ref does not match workflow_run.head_branch $WR_HEAD_BRANCH"
+              exit 1
+            fi
+            ref_type=branch
+            if [ -f "$META_DIR/ref_type" ]; then
+              ref_type=$(tr -d '[:space:]' < "$META_DIR/ref_type")
+            fi
+            echo "ref=$ref" >> "$GITHUB_OUTPUT"
+            echo "ref_type=$ref_type" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Unsupported workflow_run event: $WR_EVENT"
+            exit 1
+          fi
+        shell: bash
+
+      # This will trigger the action. Make sure to change the build_dir input to the correct directory.
+      # action and pr_number/ref are required on workflow_run.
+      - uses: EndBug/pages-preview@v1
+        with:
+          build_dir: build # Change this!
+          preview_base_url: ${{ env.PAGES_BASE }}
+          preview_repo: ${{ env.PREVIEW_REPO }}
+          preview_token: ${{ secrets.PREVIEW_TOKEN }}
+          action: ${{ steps.target.outputs.action }}
+          pr_number: ${{ steps.target.outputs.pr_number }}
+          ref: ${{ steps.target.outputs.ref }}
+          ref_type: ${{ steps.target.outputs.ref_type }}
+          deployment_ref: ${{ github.event.workflow_run.head_sha }}
+
+  cleanup:
+    name: Cleanup preview
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'delete' || github.event_name == 'pull_request_target' }}
+    permissions:
+      contents: read
+      deployments: write
+      pull-requests: write
+    env:
+      PREVIEW_REPO: octocat/preview
+      PAGES_BASE: https://octocat.github.io/preview
+
+    steps:
+      - uses: EndBug/pages-preview@v1
+        with:
+          build_dir: build # Unused on remove, but the input is required
+          preview_base_url: ${{ env.PAGES_BASE }}
+          preview_repo: ${{ env.PREVIEW_REPO }}
+          preview_token: ${{ secrets.PREVIEW_TOKEN }}
+
+  manual:
+    name: Manual deploy or remove
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    permissions:
+      contents: read
+      deployments: write
+      pull-requests: write
+    env:
+      PREVIEW_REPO: octocat/preview
+      PAGES_BASE: https://octocat.github.io/preview
+      IS_REMOVE: ${{ inputs.action == 'remove' }}
+      IS_PR_PREVIEW: ${{ inputs.pr_number != '' }}
+
+    steps:
+      # This job has PREVIEW_TOKEN, so it must not checkout or build PR code.
+      # Re-run the unprivileged "Build preview" workflow to deploy a PR.
+      - name: Reject privileged PR builds
+        if: ${{ env.IS_REMOVE != 'true' && env.IS_PR_PREVIEW == 'true' }}
+        run: |
+          echo "::error::Manual PR deploys are not supported in this privileged workflow. Re-run the Build preview workflow instead."
+          exit 1
+
+      - name: Checkout branch
+        if: ${{ env.IS_REMOVE != 'true' && env.IS_PR_PREVIEW != 'true' }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Record deployment ref
+        if: ${{ env.IS_REMOVE != 'true' && env.IS_PR_PREVIEW != 'true' }}
+        id: checkout_sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # Assuming you're using Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        if: ${{ env.IS_REMOVE != 'true' && env.IS_PR_PREVIEW != 'true' }}
+        with:
+          node-version: '16'
+          cache: npm
+
+      - name: Install dependencies
+        if: ${{ env.IS_REMOVE != 'true' && env.IS_PR_PREVIEW != 'true' }}
+        run: npm ci --ignore-scripts
+
+      - name: Determine base URL
+        if: ${{ env.IS_REMOVE != 'true' && env.IS_PR_PREVIEW != 'true' }}
+        id: baseurl
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+        run: |
+          ref="$INPUT_REF"
+          if [[ $ref == refs/* ]]; then
+            ref=$(cut -d "/" -f 3- <<<"$ref")
+          fi
+          full="${{ env.PAGES_BASE }}/${{ github.repository }}/branch/$ref"
+          relative=/$(echo "$full" | cut -d/ -f4-)
+
+          echo "full=$full" >> "$GITHUB_OUTPUT"
+          echo "relative=$relative" >> "$GITHUB_OUTPUT"
+        shell: bash
+
+      # Run your usual build command, but make sure to use the correct base URL
+      # This example assumes you're using React, and that you're using the PUBLIC_URL env variable
+      - name: Build
+        if: ${{ env.IS_REMOVE != 'true' && env.IS_PR_PREVIEW != 'true' }}
+        run: npm run build
+        env:
+          PUBLIC_URL: ${{ steps.baseurl.outputs.relative }}
+
+      - uses: EndBug/pages-preview@v1
+        with:
+          build_dir: build # Change this!
+          preview_base_url: ${{ env.PAGES_BASE }}
+          preview_repo: ${{ env.PREVIEW_REPO }}
+          preview_token: ${{ secrets.PREVIEW_TOKEN }}
+          action: ${{ inputs.action }}
+          pr_number: ${{ inputs.pr_number }}
+          ref: ${{ inputs.ref }}
+          ref_type: ${{ inputs.ref_type }}
+          deployment_ref: ${{ steps.checkout_sha.outputs.sha }}

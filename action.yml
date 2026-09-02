@@ -58,7 +58,7 @@ inputs:
     default: preview.yml
     required: false
   action:
-    description: Whether to deploy or remove the preview. Defaults from the event payload; required on events that do not define deploy or remove (e.g. workflow_dispatch) when pr_number or ref is provided.
+    description: Whether to deploy or remove the preview. Defaults from the event payload; required on events that do not define deploy or remove (e.g. workflow_run, workflow_dispatch) when pr_number or ref is provided.
     required: false
   pr_number:
     description: Pull request number for the preview path (repo/pr/N). Defaults from the event payload; overrides the event when set.
@@ -68,6 +68,9 @@ inputs:
     required: false
   ref_type:
     description: Whether ref is a branch or tag. Defaults from the event payload; if ref is provided without ref_type, branch is assumed. Tags are ignored (action none), same as today.
+    required: false
+  deployment_ref:
+    description: Git SHA (or ref) recorded on the GitHub Deployment. Defaults to the pull request head SHA, then github.head_ref, then github.ref. Pass workflow_run.head_sha (or the checked-out commit) so the deployment points at the verified commit.
     required: false
 
 runs:
@@ -97,7 +100,7 @@ runs:
     with:
       step: start
       env: ${{ inputs.deployment_env }}
-      ref: ${{ github.event.pull_request.head.sha || github.head_ref || github.ref }}
+      ref: ${{ inputs.deployment_ref || github.event.pull_request.head.sha || github.head_ref || github.ref }}
       task: deploy:${{ steps.parse_action.outputs.path }}
 
   - name: Set up the preview repo
